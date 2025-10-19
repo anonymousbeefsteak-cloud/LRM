@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>台灣小吃店 - LINE訂餐系統</title>
+    <script src="https://static.line-scdn.net/liff/edge/2.22.3/sdk.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
     <style>
         * {
             margin: 0;
@@ -45,12 +45,11 @@
         }
         
         .header {
-            background: var(--primary);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             color: white;
             padding: 25px 20px;
             text-align: center;
             position: relative;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
         }
         
         .header h1 {
@@ -62,17 +61,6 @@
         .header p {
             font-size: 0.95em;
             opacity: 0.9;
-        }
-        
-        .header::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 10%;
-            right: 10%;
-            height: 3px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 3px;
         }
         
         .order-form {
@@ -135,13 +123,6 @@
             transition: all 0.3s ease;
         }
         
-        .cart-item:hover {
-            background: rgba(255, 255, 255, 0.5);
-            border-radius: 8px;
-            padding-left: 8px;
-            padding-right: 8px;
-        }
-        
         .cart-item:last-child {
             border-bottom: none;
         }
@@ -187,7 +168,6 @@
         
         .remove-btn:hover {
             background: #c0392b;
-            transform: scale(1.05);
         }
         
         .empty-cart {
@@ -231,8 +211,6 @@
             font-weight: 700;
             cursor: pointer;
             transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
             box-shadow: 0 4px 12px rgba(6, 199, 85, 0.3);
         }
         
@@ -242,19 +220,11 @@
             box-shadow: 0 6px 15px rgba(0,0,0,0.15);
         }
         
-        .submit-btn:active {
-            transform: translateY(0);
-        }
-        
         .submit-btn:disabled {
             background: var(--gray);
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
-        }
-        
-        .submit-btn:disabled:hover {
-            background: var(--gray);
         }
         
         .notification {
@@ -355,10 +325,6 @@
             border-color: var(--danger);
         }
 
-        .form-group.error .error-message {
-            display: block;
-        }
-        
         .liff-status {
             background: #E3F2FD;
             padding: 10px 14px;
@@ -367,17 +333,6 @@
             font-size: 13px;
             text-align: center;
             border: 1px solid #2196F3;
-        }
-        
-        .line-id-display {
-            background: #F3E5F5;
-            padding: 10px 14px;
-            border-radius: 8px;
-            margin: 12px 0;
-            font-size: 12px;
-            word-break: break-all;
-            border: 1px solid #9C27B0;
-            display: none;
         }
         
         .quick-add-buttons {
@@ -403,7 +358,6 @@
         .quick-add-btn:hover {
             background: var(--primary);
             color: white;
-            transform: translateY(-1px);
         }
         
         .footer {
@@ -427,17 +381,6 @@
             font-style: italic;
         }
 
-        .debug-info {
-            background: #f8f9fa;
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 12px;
-            font-size: 11px;
-            color: #6c757d;
-            border: 1px solid #e9ecef;
-            display: none;
-        }
-        
         .notification-status {
             margin-top: 12px;
             padding: 10px;
@@ -480,49 +423,6 @@
             background: #5a6268;
         }
         
-        .rich-menu-preview {
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            margin-top: 20px;
-            box-shadow: var(--card-shadow);
-        }
-        
-        .menu-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        .menu-item {
-            background: var(--light);
-            border-radius: 12px;
-            padding: 15px 10px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-        }
-        
-        .menu-item:hover {
-            background: var(--primary);
-            color: white;
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        
-        .menu-item i {
-            font-size: 24px;
-            margin-bottom: 8px;
-            display: block;
-        }
-        
-        .menu-item span {
-            font-size: 12px;
-            font-weight: 600;
-        }
-        
         .status-indicator {
             display: inline-block;
             width: 10px;
@@ -558,151 +458,105 @@
                 <span class="status-indicator status-online"></span> LINE 帳號已綁定
             </div>
             
-            <!-- LINE User ID 顯示 -->
-            <div class="line-id-display" id="lineIdDisplay">
-                <strong>LINE User ID:</strong> <span id="lineUserId"></span>
+            <!-- 顧客資訊 -->
+            <div class="form-group">
+                <label class="required">姓名</label>
+                <input type="text" id="customerName" placeholder="自動帶入 LINE 名稱">
             </div>
             
-            <!-- Rich Menu 預覽 -->
-            <div class="rich-menu-preview">
-                <div class="section-title">📱 Rich Menu 選單</div>
-                <div class="menu-grid">
-                    <div class="menu-item" onclick="showSection('order')">
-                        <i class="fas fa-utensils"></i>
-                        <span>立即訂餐</span>
-                    </div>
-                    <div class="menu-item" onclick="showSection('cart')">
-                        <i class="fas fa-shopping-cart"></i>
-                        <span>購物車</span>
-                    </div>
-                    <div class="menu-item" onclick="showSection('orders')">
-                        <i class="fas fa-clipboard-list"></i>
-                        <span>訂單查詢</span>
-                    </div>
-                    <div class="menu-item" onclick="showSection('menu')">
-                        <i class="fas fa-book-open"></i>
-                        <span>查看菜單</span>
-                    </div>
-                    <div class="menu-item" onclick="showSection('about')">
-                        <i class="fas fa-info-circle"></i>
-                        <span>關於我們</span>
-                    </div>
-                    <div class="menu-item" onclick="showSection('contact')">
-                        <i class="fas fa-phone-alt"></i>
-                        <span>聯絡我們</span>
+            <div class="form-group" id="phoneGroup">
+                <label class="required">手機號碼</label>
+                <input type="tel" id="customerPhone" placeholder="0912345678" required>
+                <div class="error-message" id="phoneError">請輸入正確的手機號碼 (09開頭，10位數字)</div>
+            </div>
+            
+            <!-- 取餐時間 -->
+            <div class="form-group" id="timeGroup">
+                <label class="required">取餐時間</label>
+                <input type="datetime-local" id="pickupTime" required>
+                <div class="error-message" id="timeError">請選擇取餐時間</div>
+            </div>
+            
+            <!-- 外送地點 -->
+            <div class="form-group">
+                <label>外送地點 (選填)</label>
+                <input type="text" id="deliveryAddress" placeholder="如需外送請填寫地址">
+                <div class="delivery-note">※ 填寫地址將自動加收 $30 外送費</div>
+            </div>
+            
+            <!-- 菜單選擇 -->
+            <div class="menu-section">
+                <div class="section-title">🍽️ 選擇餐點</div>
+                
+                <div class="form-group">
+                    <label>選擇餐點</label>
+                    <select id="menuSelect">
+                        <option value="">-- 請選擇餐點 --</option>
+                        <option value="滷肉飯">🍚 滷肉飯 - $35</option>
+                        <option value="雞肉飯">🍗 雞肉飯 - $40</option>
+                        <option value="蚵仔煎">🍳 蚵仔煎 - $65</option>
+                        <option value="大腸麵線">🍜 大腸麵線 - $50</option>
+                        <option value="珍珠奶茶">🥤 珍珠奶茶 - $45</option>
+                        <option value="鹽酥雞">🍖 鹽酥雞 - $60</option>
+                        <option value="甜不辣">🍢 甜不辣 - $40</option>
+                        <option value="肉圓">🥟 肉圓 - $45</option>
+                    </select>
+                </div>
+                
+                <div style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px;">
+                    <div style="font-size: 13px; color: var(--gray); margin-bottom: 6px;">快速選擇：</div>
+                    <div class="quick-add-buttons">
+                        <button type="button" onclick="quickAdd('滷肉飯')" class="quick-add-btn">🍚 滷肉飯</button>
+                        <button type="button" onclick="quickAdd('雞肉飯')" class="quick-add-btn">🍗 雞肉飯</button>
+                        <button type="button" onclick="quickAdd('珍珠奶茶')" class="quick-add-btn">🥤 珍珠奶茶</button>
+                        <button type="button" onclick="quickAdd('鹽酥雞')" class="quick-add-btn">🍖 鹽酥雞</button>
                     </div>
                 </div>
             </div>
             
-            <!-- 訂餐表單 -->
-            <div id="orderSection" class="form-section">
-                <div class="section-title">📝 立即訂餐</div>
-                
-                <!-- 顧客資訊 -->
-                <div class="form-group">
-                    <label class="required">姓名</label>
-                    <input type="text" id="customerName" placeholder="自動帶入 LINE 名稱">
+            <!-- 購物車 -->
+            <div class="cart-section">
+                <div class="section-title">🛒 訂單明細</div>
+                <div id="cartItems">
+                    <div class="empty-cart">尚未選擇餐點</div>
                 </div>
-                
-                <div class="form-group" id="phoneGroup">
-                    <label class="required">手機號碼</label>
-                    <input type="tel" id="customerPhone" placeholder="0912345678" required>
-                    <div class="error-message" id="phoneError">請輸入正確的手機號碼 (09開頭，10位數字)</div>
-                </div>
-                
-                <!-- 取餐時間 -->
-                <div class="form-group" id="timeGroup">
-                    <label class="required">取餐時間</label>
-                    <input type="datetime-local" id="pickupTime" required>
-                    <div class="error-message" id="timeError">請選擇取餐時間</div>
-                </div>
-                
-                <!-- 外送地點 -->
-                <div class="form-group">
-                    <label>外送地點 (選填)</label>
-                    <input type="text" id="deliveryAddress" placeholder="如需外送請填寫地址">
-                    <div class="delivery-note">※ 填寫地址將自動加收 $30 外送費</div>
-                </div>
-                
-                <!-- 菜單選擇 -->
-                <div class="menu-section">
-                    <div class="section-title">🍽️ 選擇餐點</div>
-                    
-                    <div class="form-group">
-                        <label>選擇餐點</label>
-                        <select id="menuSelect" onchange="addToCart()">
-                            <option value="">-- 請選擇餐點 --</option>
-                            <option value="滷肉飯">🍚 滷肉飯 - $35</option>
-                            <option value="雞肉飯">🍗 雞肉飯 - $40</option>
-                            <option value="蚵仔煎">🍳 蚵仔煎 - $65</option>
-                            <option value="大腸麵線">🍜 大腸麵線 - $50</option>
-                            <option value="珍珠奶茶">🥤 珍珠奶茶 - $45</option>
-                            <option value="鹽酥雞">🍖 鹽酥雞 - $60</option>
-                            <option value="甜不辣">🍢 甜不辣 - $40</option>
-                            <option value="肉圓">🥟 肉圓 - $45</option>
-                        </select>
-                    </div>
-                    
-                    <div style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px;">
-                        <div style="font-size: 13px; color: var(--gray); margin-bottom: 6px;">快速選擇：</div>
-                        <div class="quick-add-buttons">
-                            <button type="button" onclick="quickAdd('滷肉飯')" class="quick-add-btn">🍚 滷肉飯</button>
-                            <button type="button" onclick="quickAdd('雞肉飯')" class="quick-add-btn">🍗 雞肉飯</button>
-                            <button type="button" onclick="quickAdd('珍珠奶茶')" class="quick-add-btn">🥤 珍珠奶茶</button>
-                            <button type="button" onclick="quickAdd('鹽酥雞')" class="quick-add-btn">🍖 鹽酥雞</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 購物車 -->
-                <div class="cart-section">
-                    <div class="section-title">🛒 訂單明細</div>
-                    <div id="cartItems">
-                        <div class="empty-cart">尚未選擇餐點</div>
-                    </div>
-                </div>
-                
-                <!-- 備註 -->
-                <div class="form-group">
-                    <label>備註 (選填)</label>
-                    <textarea id="notes" rows="2" placeholder="例如：不要香菜、加辣、餐具數量等"></textarea>
-                </div>
-                
-                <!-- 訂單總計 -->
-                <div class="order-summary">
-                    <div class="summary-row">
-                        <span>餐點總計:</span>
-                        <span id="subtotal">$0</span>
-                    </div>
-                    <div class="summary-row">
-                        <span>外送費:</span>
-                        <span id="deliveryFee">$0</span>
-                    </div>
-                    <div class="summary-row total-row">
-                        <span>總金額:</span>
-                        <span id="totalAmount">$0</span>
-                    </div>
-                </div>
-                
-                <!-- 通知狀態 -->
-                <div id="notificationStatus"></div>
-                
-                <!-- 載入動畫 -->
-                <div class="loading" id="loading">
-                    <div class="spinner"></div>
-                    <p>訂單發送中...</p>
-                </div>
-                
-                <!-- 提交按鈕 -->
-                <button class="submit-btn" onclick="submitOrder()" id="submitBtn" disabled>
-                    <i class="fas fa-paper-plane"></i> 送出訂單
-                </button>
             </div>
             
-            <!-- 其他部分 -->
-            <div id="otherSections" style="display: none;">
-                <!-- 這裡可以添加其他部分的內容 -->
+            <!-- 備註 -->
+            <div class="form-group">
+                <label>備註 (選填)</label>
+                <textarea id="notes" rows="2" placeholder="例如：不要香菜、加辣、餐具數量等"></textarea>
             </div>
+            
+            <!-- 訂單總計 -->
+            <div class="order-summary">
+                <div class="summary-row">
+                    <span>餐點總計:</span>
+                    <span id="subtotal">$0</span>
+                </div>
+                <div class="summary-row">
+                    <span>外送費:</span>
+                    <span id="deliveryFee">$0</span>
+                </div>
+                <div class="summary-row total-row">
+                    <span>總金額:</span>
+                    <span id="totalAmount">$0</span>
+                </div>
+            </div>
+            
+            <!-- 通知狀態 -->
+            <div id="notificationStatus"></div>
+            
+            <!-- 載入動畫 -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>訂單發送中...</p>
+            </div>
+            
+            <!-- 提交按鈕 -->
+            <button class="submit-btn" onclick="submitOrder()" id="submitBtn" disabled>
+                <i class="fas fa-paper-plane"></i> 送出訂單
+            </button>
             
             <!-- 測試按鈕 -->
             <div class="test-buttons">
@@ -712,15 +566,6 @@
                 <button class="test-btn" onclick="testLineNotification()">
                     <i class="fab fa-line"></i> 測試LINE通知
                 </button>
-                <button class="test-btn" onclick="toggleDebug()">
-                    <i class="fas fa-bug"></i> 顯示除錯資訊
-                </button>
-            </div>
-
-            <!-- 除錯資訊 -->
-            <div class="debug-info" id="debugInfo">
-                <strong>除錯資訊:</strong>
-                <div id="debugContent"></div>
             </div>
             
             <div class="footer">
@@ -737,8 +582,8 @@
     <script>
         // 系統配置
         const CONFIG = {
-            LIFF_ID: '2008276630-bYNjwMx7',
-            API_ENDPOINT: 'https://script.google.com/macros/s/AKfycbwdGZwmBQSRI8zE13BKYW_QE3RM99hbmSrd3RlWG46Sr3hubzrkT0hSuxe6kMtjeY7h/exec'
+            LIFF_ID: '2008316489-6nMjb0KX',
+            API_ENDPOINT: 'https://script.google.com/macros/s/AKfycbymF06poRvQ98i8FpOv-SEi84a_CKCpZveM3Fq4JbFa0I1JmDX3qHHP1WD1KOGS1X9zZg/exec'
         };
         
         // 菜單價格
@@ -770,62 +615,14 @@
         let lineUserId = '';
         let isLineBound = false;
         
-        // 顯示不同部分
-        function showSection(section) {
-            // 隱藏所有部分
-            document.getElementById('orderSection').style.display = 'none';
-            document.getElementById('otherSections').style.display = 'none';
-            
-            // 顯示選中的部分
-            if (section === 'order') {
-                document.getElementById('orderSection').style.display = 'block';
-            } else {
-                document.getElementById('otherSections').style.display = 'block';
-                document.getElementById('otherSections').innerHTML = `<div class="section-title">${getSectionTitle(section)}</div><div style="padding: 20px; text-align: center;">此功能開發中，敬請期待！</div>`;
-            }
-            
-            // 顯示通知
-            showNotification(`已切換到 ${getSectionTitle(section)} 功能`, 'success', 2000);
-        }
-        
-        // 獲取部分標題
-        function getSectionTitle(section) {
-            const titles = {
-                'order': '📝 立即訂餐',
-                'cart': '🛒 購物車',
-                'orders': '📋 訂單查詢',
-                'menu': '📖 查看菜單',
-                'about': 'ℹ️ 關於我們',
-                'contact': '📞 聯絡我們'
-            };
-            return titles[section] || '未知功能';
-        }
-        
-        // 除錯函數
-        function debugLog(message) {
-            console.log(message);
-            const debugContent = document.getElementById('debugContent');
-            if (debugContent) {
-                debugContent.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${message}</div>`;
-            }
-        }
-        
-        function toggleDebug() {
-            const debugInfo = document.getElementById('debugInfo');
-            debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
-        }
-        
         // 初始化 LIFF
         async function initializeLiff() {
             try {
                 document.getElementById('liffStatus').innerHTML = '<span class="status-indicator status-offline"></span> 正在初始化 LINE 功能...';
-                debugLog('開始初始化 LIFF...');
                 
                 await liff.init({ 
                     liffId: CONFIG.LIFF_ID 
                 });
-                
-                debugLog('LIFF 初始化成功');
                 
                 if (liff.isLoggedIn()) {
                     // 獲取用戶資料
@@ -838,29 +635,16 @@
                     document.getElementById('userInfo').innerHTML = `<span class="status-indicator status-online"></span> LINE 帳號已綁定<br>👋 歡迎，${userProfile.displayName}`;
                     document.getElementById('userInfo').style.display = 'block';
                     
-                    // 顯示 LINE User ID
-                    document.getElementById('lineIdDisplay').style.display = 'block';
-                    document.getElementById('lineUserId').textContent = lineUserId;
-                    
                     document.getElementById('liffStatus').innerHTML = '<span class="status-indicator status-online"></span> LINE 功能已就緒';
                     
-                    debugLog(`LINE User ID: ${lineUserId}`);
-                    debugLog(`用戶名稱: ${userProfile.displayName}`);
-                    
                 } else {
-                    // 在 LINE 環境中但未登入，自動登入
                     document.getElementById('liffStatus').innerHTML = '<span class="status-indicator status-offline"></span> 正在進行 LINE 登入...';
                     liff.login();
                 }
                 
             } catch (error) {
                 console.error('LIFF 初始化失敗:', error);
-                debugLog(`LIFF 初始化失敗: ${error.message}`);
                 document.getElementById('liffStatus').innerHTML = '<span class="status-indicator status-offline"></span> LINE 功能初始化失敗';
-                document.getElementById('liffStatus').style.background = '#FFF3CD';
-                document.getElementById('liffStatus').style.borderColor = '#FFEBA8';
-                document.getElementById('liffStatus').style.color = '#856404';
-                
                 showNotification('LINE 功能載入失敗，但仍可訂餐', 'warning', 5000);
             }
         }
@@ -1061,12 +845,8 @@
         // 使用 Google Apps Script 的 doGet 作為代理
         function submitOrderViaGet(orderData) {
             return new Promise((resolve, reject) => {
-                // 將訂單資料編碼為 URL 參數
                 const encodedData = encodeURIComponent(JSON.stringify(orderData));
                 const url = `${CONFIG.API_ENDPOINT}?action=createOrder&data=${encodedData}`;
-                
-                debugLog('使用 GET 代理發送訂單...');
-                debugLog(`請求 URL: ${url}`);
                 
                 fetch(url)
                     .then(response => {
@@ -1084,7 +864,7 @@
             });
         }
         
-        // 提交訂單 - 使用 GET 代理解決 CORS
+        // 提交訂單
         async function submitOrder() {
             if (!validateForm()) {
                 return;
@@ -1115,14 +895,10 @@
                 timestamp: new Date().toISOString()
             };
             
-            debugLog('準備發送訂單資料...');
-            debugLog(`訂單資料: ${JSON.stringify(orderData)}`);
             setLoading(true);
             
             try {
-                // 使用 GET 代理發送訂單
                 const result = await submitOrderViaGet(orderData);
-                debugLog(`伺服器回應: ${JSON.stringify(result)}`);
                 
                 if (result.success) {
                     const orderId = result.data?.orderId || 'N/A';
@@ -1139,23 +915,6 @@
                     
                     if (isLineBound) {
                         successMessage += '\n📱 LINE 帳號已綁定';
-                        
-                        // 發送 LINE 訊息
-                        if (liff.isInClient()) {
-                            try {
-                                const itemsText = cart.map(item => 
-                                    `${item.name} x${item.quantity}`
-                                ).join('\n');
-                                
-                                await liff.sendMessages([{
-                                    type: 'text',
-                                    text: `感謝您的訂購！\n訂單編號: ${orderId}\n餐點:\n${itemsText}\n總金額: $${finalTotal}\n取餐時間: ${new Date(pickupTime).toLocaleString('zh-TW')}\n我們會儘快為您準備餐點。`
-                                }]);
-                                successMessage += '\n💬 已發送訂單通知';
-                            } catch (sendError) {
-                                debugLog(`LINE 訊息發送失敗: ${sendError}`);
-                            }
-                        }
                     }
                     
                     showNotification(successMessage, 'success', 6000);
@@ -1167,12 +926,11 @@
                 
             } catch (error) {
                 console.error('錯誤:', error);
-                debugLog(`發送錯誤: ${error.message}`);
                 
                 let errorMessage = `❌ 發送失敗\n${error.message}`;
                 
                 if (error.message.includes('Failed to fetch')) {
-                    errorMessage += '\n\n請檢查：\n1. 網路連線\n2. 後端服務狀態\n3. 網址是否正確';
+                    errorMessage += '\n\n請檢查網路連線和後端服務狀態';
                 }
                 
                 showNotification(errorMessage, 'error', 8000);
@@ -1209,7 +967,6 @@
             setDefaultPickupTime();
             updateOrderSummary();
             
-            // 保留 LINE 用戶名稱
             if (userProfile) {
                 document.getElementById('customerName').value = userProfile.displayName;
             }
@@ -1218,18 +975,14 @@
         // 測試後端連線
         async function testBackendConnection() {
             try {
-                debugLog('測試後端連線...');
                 const response = await fetch(CONFIG.API_ENDPOINT + '?action=healthCheck');
                 if (response.ok) {
                     const result = await response.json();
-                    debugLog('後端連線正常');
                     showNotification('✅ 後端服務連線正常', 'success', 3000);
                 } else {
-                    debugLog('後端連線測試失敗');
                     showNotification('❌ 後端服務連線異常', 'error', 3000);
                 }
             } catch (error) {
-                debugLog(`後端連線測試異常: ${error.message}`);
                 showNotification('❌ 無法連線到後端服務', 'error', 3000);
             }
         }
@@ -1237,7 +990,6 @@
         // 測試 LINE 通知
         async function testLineNotification() {
             try {
-                debugLog('測試 LINE 通知...');
                 const response = await fetch(CONFIG.API_ENDPOINT + '?action=testLine');
                 if (response.ok) {
                     const result = await response.json();
@@ -1250,7 +1002,6 @@
                     showNotification('❌ LINE 通知測試失敗', 'error', 3000);
                 }
             } catch (error) {
-                debugLog(`LINE 通知測試異常: ${error.message}`);
                 showNotification('❌ LINE 通知測試異常', 'error', 3000);
             }
         }
@@ -1258,6 +1009,7 @@
         // 初始化事件監聽
         function initializeEventListeners() {
             document.getElementById('deliveryAddress').addEventListener('input', updateOrderSummary);
+            document.getElementById('menuSelect').addEventListener('change', addToCart);
             
             document.getElementById('customerPhone').addEventListener('input', function() {
                 const phone = this.value.trim();
@@ -1272,7 +1024,6 @@
             document.getElementById('pickupTime').addEventListener('change', function() {
                 if (this.value) {
                     document.getElementById('timeGroup').classList.remove('error');
-                    // 檢查時間是否為過去
                     if (new Date(this.value) < new Date()) {
                         document.getElementById('timeGroup').classList.add('error');
                         showNotification('取餐時間不能是過去時間', 'error', 3000);
@@ -1286,9 +1037,6 @@
             await initializeLiff();
             setDefaultPickupTime();
             initializeEventListeners();
-            
-            // 測試後端連線
-            testBackendConnection();
         });
     </script>
 </body>
