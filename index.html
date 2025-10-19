@@ -417,38 +417,40 @@
             background: var(--danger);
         }
 
-        .rich-menu-nav {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin: 15px 0;
-            padding: 10px;
-            background: var(--light);
+        .line-guide {
+            background: linear-gradient(135deg, #06C755 0%, #00B900 100%);
+            color: white;
+            padding: 20px;
             border-radius: 12px;
+            margin: 15px 0;
+            text-align: center;
         }
 
-        .menu-nav-item {
+        .line-guide h3 {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .line-guide p {
+            margin-bottom: 15px;
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .guide-btn {
             background: white;
-            border: 2px solid var(--primary);
-            border-radius: 10px;
-            padding: 12px 8px;
-            text-align: center;
+            color: var(--primary);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
             cursor: pointer;
             transition: all 0.3s ease;
-            font-size: 12px;
-            font-weight: 600;
         }
 
-        .menu-nav-item:hover {
-            background: var(--primary);
-            color: white;
+        .guide-btn:hover {
+            background: #f0f0f0;
             transform: translateY(-2px);
-        }
-
-        .menu-nav-item i {
-            display: block;
-            font-size: 20px;
-            margin-bottom: 5px;
         }
     </style>
 </head>
@@ -462,7 +464,16 @@
         <div class="order-form">
             <!-- LINE 狀態 -->
             <div class="liff-status" id="liffStatus">
-                <span class="status-indicator status-offline"></span> 初始化 LINE 功能中...
+                <span class="status-indicator status-offline"></span> 正在檢查 LINE 環境...
+            </div>
+
+            <!-- LINE 使用指南 -->
+            <div class="line-guide" id="lineGuide" style="display: none;">
+                <h3><i class="fab fa-line"></i> 請在 LINE App 中使用</h3>
+                <p>此功能需要在 LINE App 中開啟才能正常使用</p>
+                <button class="guide-btn" onclick="openInLineApp()">
+                    <i class="fas fa-external-link-alt"></i> 在 LINE 中開啟
+                </button>
             </div>
             
             <!-- LINE 用戶資訊 -->
@@ -470,28 +481,12 @@
                 <span class="status-indicator status-online"></span> LINE 帳號已綁定
             </div>
 
-            <!-- Rich Menu 導航 -->
-            <div class="rich-menu-nav">
-                <div class="menu-nav-item" onclick="scrollToSection('orderForm')">
-                    <i class="fas fa-utensils"></i>
-                    立即訂餐
-                </div>
-                <div class="menu-nav-item" onclick="showNotification('功能開發中', 'info')">
-                    <i class="fas fa-history"></i>
-                    訂單查詢
-                </div>
-                <div class="menu-nav-item" onclick="showNotification('功能開發中', 'info')">
-                    <i class="fas fa-store"></i>
-                    門市資訊
-                </div>
-            </div>
-            
             <!-- 訂餐表單 -->
             <div id="orderForm">
                 <!-- 顧客資訊 -->
                 <div class="form-group">
                     <label class="required">姓名</label>
-                    <input type="text" id="customerName" placeholder="自動帶入 LINE 名稱">
+                    <input type="text" id="customerName" placeholder="請輸入您的姓名">
                 </div>
                 
                 <div class="form-group" id="phoneGroup">
@@ -592,7 +587,7 @@
             <div class="footer">
                 <p><i class="fas fa-clock"></i> 營業時間: 10:00-21:00</p>
                 <p><i class="fas fa-phone"></i> 聯絡電話: 02-1234-5678</p>
-                <p style="margin-top: 8px; font-size: 11px; opacity: 0.7;">系統版本: 3.2 | LINE Rich Menu 專用版</p>
+                <p style="margin-top: 8px; font-size: 11px; opacity: 0.7;">系統版本: 3.3 | LINE 專用版</p>
             </div>
         </div>
     </div>
@@ -635,21 +630,40 @@
         let userProfile = null;
         let isLineMode = false;
 
-        // 滾動到指定區塊
-        function scrollToSection(sectionId) {
-            document.getElementById(sectionId).scrollIntoView({ 
-                behavior: 'smooth' 
-            });
+        // 在 LINE App 中開啟
+        function openInLineApp() {
+            // 使用 LINE 的標準 URL Scheme
+            const lineUrl = `https://line.me/R/app/${CONFIG.LIFF_ID}`;
+            window.open(lineUrl, '_blank');
+            showNotification('請在 LINE App 中開啟連結', 'info', 4000);
         }
 
         // 初始化 LIFF
         async function initializeLiff() {
             try {
-                document.getElementById('liffStatus').innerHTML = '<span class="status-indicator status-offline"></span> 正在初始化 LINE 功能...';
+                console.log('開始初始化 LIFF...');
+                
+                // 檢查是否在 LINE 環境中
+                const isInLine = navigator.userAgent.includes('Line');
+                console.log('是否在 LINE 環境中:', isInLine);
+                
+                if (!isInLine) {
+                    // 不在 LINE 環境中，顯示指引
+                    document.getElementById('liffStatus').innerHTML = 
+                        '<span class="status-indicator status-offline"></span> 請在 LINE App 中使用';
+                    document.getElementById('lineGuide').style.display = 'block';
+                    return;
+                }
+
+                // 在 LINE 環境中，初始化 LIFF
+                document.getElementById('liffStatus').innerHTML = 
+                    '<span class="status-indicator status-offline"></span> 正在初始化 LINE 功能...';
                 
                 await liff.init({ 
                     liffId: CONFIG.LIFF_ID 
                 });
+
+                console.log('LIFF 初始化成功, 登入狀態:', liff.isLoggedIn());
                 
                 if (liff.isLoggedIn()) {
                     // 獲取用戶資料
@@ -665,18 +679,27 @@
                     `;
                     document.getElementById('userInfo').style.display = 'block';
                     
-                    document.getElementById('liffStatus').innerHTML = '<span class="status-indicator status-online"></span> LINE 模式已就緒';
+                    document.getElementById('liffStatus').innerHTML = 
+                        '<span class="status-indicator status-online"></span> LINE 模式已就緒';
                     
                 } else {
-                    // 在 LINE 環境中但未登入，顯示提示
-                    document.getElementById('liffStatus').innerHTML = '<span class="status-indicator status-offline"></span> 請重新整理頁面或重新開啟';
-                    showNotification('請重新整理頁面以使用 LINE 功能', 'warning', 5000);
+                    // 在 LINE 環境中但未登入，自動登入
+                    console.log('未登入，嘗試自動登入...');
+                    liff.login();
                 }
                 
             } catch (error) {
                 console.error('LIFF 初始化失敗:', error);
-                document.getElementById('liffStatus').innerHTML = '<span class="status-indicator status-offline"></span> LINE 功能初始化失敗';
-                showNotification('LINE 功能載入失敗，請在 LINE App 中重新開啟', 'error', 5000);
+                
+                if (error.message.includes('LIFF_ID')) {
+                    document.getElementById('liffStatus').innerHTML = 
+                        '<span class="status-indicator status-offline"></span> LIFF 設定錯誤';
+                    showNotification('系統設定錯誤，請聯絡店家', 'error', 5000);
+                } else {
+                    document.getElementById('liffStatus').innerHTML = 
+                        '<span class="status-indicator status-offline"></span> LINE 功能載入失敗';
+                    document.getElementById('lineGuide').style.display = 'block';
+                }
             }
         }
         
@@ -798,12 +821,19 @@
         function validateForm() {
             let isValid = true;
             
+            // 驗證姓名
+            const customerName = document.getElementById('customerName').value.trim();
+            if (!customerName) {
+                document.getElementById('customerName').style.borderColor = 'var(--danger)';
+                isValid = false;
+            } else {
+                document.getElementById('customerName').style.borderColor = '';
+            }
+            
             // 驗證手機號碼
             const phone = document.getElementById('customerPhone').value.trim();
             const phoneRegex = /^09\d{8}$/;
-            const isPhoneValid = phoneRegex.test(phone);
-            
-            if (!isPhoneValid) {
+            if (!phoneRegex.test(phone)) {
                 document.getElementById('phoneGroup').classList.add('error');
                 isValid = false;
             } else {
@@ -917,7 +947,7 @@
             const orderData = {
                 customerName: customerName,
                 customerPhone: customerPhone,
-                customerLineUserId: isLineMode ? userProfile.userId : 'LINE_USER',
+                customerLineUserId: isLineMode ? (userProfile?.userId || 'LINE_USER') : 'WEB_USER',
                 items: cart,
                 totalAmount: finalTotal,
                 pickupTime: pickupTime,
@@ -946,22 +976,6 @@
                     
                     if (isLineMode) {
                         successMessage += '\n📱 已發送訂單確認通知';
-                        
-                        // 嘗試發送 LIFF 訊息
-                        try {
-                            if (liff.isInClient()) {
-                                const itemsText = cart.map(item => 
-                                    `${item.name} x${item.quantity}`
-                                ).join('\n');
-                                
-                                await liff.sendMessages([{
-                                    type: 'text',
-                                    text: `感謝您的訂購！\n訂單編號: ${orderId}\n總金額: $${finalTotal}\n我們會儘快為您準備餐點。`
-                                }]);
-                            }
-                        } catch (sendError) {
-                            console.log('LIFF 訊息發送失敗:', sendError);
-                        }
                     }
                     
                     showNotification(successMessage, 'success', 6000);
@@ -1052,5 +1066,4 @@
             initializeLiff();
         });
     </script>
-</body>
-</html>
+</body
