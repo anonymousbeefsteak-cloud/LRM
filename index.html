@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>台灣小吃店 - LINE訂餐系統</title>
-    <script src="https://static.line-scdn.net/liff/edge/2.22.3/sdk.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
@@ -438,6 +437,17 @@
         .status-offline {
             background: var(--danger);
         }
+
+        .liff-fallback {
+            background: #FFF3CD;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #FFEBA8;
+            color: #856404;
+            font-size: 13px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -452,6 +462,11 @@
             <div class="liff-status" id="liffStatus">
                 <span class="status-indicator status-offline"></span> 初始化 LINE 功能中...
             </div>
+
+            <!-- LIFF 載入失敗提示 -->
+            <div class="liff-fallback" id="liffFallback" style="display: none;">
+                <i class="fas fa-exclamation-triangle"></i> LINE 功能載入失敗，請在 LINE App 中開啟此頁面
+            </div>
             
             <!-- LINE 用戶資訊 -->
             <div class="user-info" id="userInfo" style="display: none;">
@@ -461,7 +476,7 @@
             <!-- 顧客資訊 -->
             <div class="form-group">
                 <label class="required">姓名</label>
-                <input type="text" id="customerName" placeholder="自動帶入 LINE 名稱">
+                <input type="text" id="customerName" placeholder="請輸入您的姓名">
             </div>
             
             <div class="form-group" id="phoneGroup">
@@ -571,7 +586,7 @@
             <div class="footer">
                 <p><i class="fas fa-clock"></i> 營業時間: 10:00-21:00</p>
                 <p><i class="fas fa-phone"></i> 聯絡電話: 02-1234-5678</p>
-                <p style="margin-top: 8px; font-size: 11px; opacity: 0.7;">系統版本: 3.0 | Rich Menu 整合版</p>
+                <p style="margin-top: 8px; font-size: 11px; opacity: 0.7;">系統版本: 3.1 | 修復版</p>
             </div>
         </div>
     </div>
@@ -579,6 +594,7 @@
     <!-- 通知訊息 -->
     <div class="notification" id="notification"></div>
 
+    <!-- 修復 LIFF SDK 載入問題 -->
     <script>
         // 系統配置
         const CONFIG = {
@@ -614,12 +630,40 @@
         let userProfile = null;
         let lineUserId = '';
         let isLineBound = false;
-        
+        let liffInitialized = false;
+
+        // 安全載入 LIFF SDK
+        function loadLiffSDK() {
+            return new Promise((resolve, reject) => {
+                // 檢查是否已經載入
+                if (window.liff) {
+                    resolve(window.liff);
+                    return;
+                }
+
+                const script = document.createElement('script');
+                script.src = 'https://static.line-scdn.net/liff/edge/2/sdk.js';
+                script.onload = () => {
+                    if (window.liff) {
+                        resolve(window.liff);
+                    } else {
+                        reject(new Error('LIFF SDK 載入失敗'));
+                    }
+                };
+                script.onerror = () => reject(new Error('無法載入 LIFF SDK'));
+                document.head.appendChild(script);
+            });
+        }
+
         // 初始化 LIFF
         async function initializeLiff() {
             try {
-                document.getElementById('liffStatus').innerHTML = '<span class="status-indicator status-offline"></span> 正在初始化 LINE 功能...';
+                document.getElementById('liffStatus').innerHTML = '<span class="status-indicator status-offline"></span> 正在載入 LINE 功能...';
                 
+                // 載入 LIFF SDK
+                await loadLiffSDK();
+                
+                // 初始化 LIFF
                 await liff.init({ 
                     liffId: CONFIG.LIFF_ID 
                 });
@@ -629,6 +673,7 @@
                     userProfile = await liff.getProfile();
                     lineUserId = userProfile.userId;
                     isLineBound = true;
+                    liffInitialized = true;
                     
                     // 更新 UI
                     document.getElementById('customerName').value = userProfile.displayName;
@@ -638,13 +683,17 @@
                     document.getElementById('liffStatus').innerHTML = '<span class="status-indicator status-online"></span> LINE 功能已就緒';
                     
                 } else {
-                    document.getElementById('liffStatus').innerHTML = '<span class="status-indicator status-offline"></span> 正在進行 LINE 登入...';
-                    liff.login();
+                    document.getElementById('liffStatus').innerHTML = '<span class="status-indicator status-offline"></span> 請在 LINE App 中使用此功能';
+                    document.getElementById('liffFallback').style.display = 'block';
                 }
                 
             } catch (error) {
                 console.error('LIFF 初始化失敗:', error);
-                document.getElementById('liffStatus').innerHTML = '<span class="status-indicator status-offline"></span> LINE 功能初始化失敗';
+                document.getElementById('liffStatus').innerHTML = '<span class="status-indicator status-offline"></span> LINE 功能載入失敗';
+                document.getElementById('liffFallback').style.display = 'block';
+                document.getElementById('liffFallback').innerHTML = '<i class="fas fa-exclamation-triangle"></i> 請在 LINE App 中開啟此頁面，或使用一般瀏覽器繼續訂餐';
+                
+                // 即使在 LINE 外也能使用基本功能
                 showNotification('LINE 功能載入失敗，但仍可訂餐', 'warning', 5000);
             }
         }
@@ -1034,9 +1083,13 @@
         
         // 頁面載入初始化
         document.addEventListener('DOMContentLoaded', async function() {
-            await initializeLiff();
-            setDefaultPickupTime();
             initializeEventListeners();
+            setDefaultPickupTime();
+            
+            // 非同步初始化 LIFF，不阻礙頁面載入
+            setTimeout(() => {
+                initializeLiff();
+            }, 100);
         });
     </script>
 </body>
