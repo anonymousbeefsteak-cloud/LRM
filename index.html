@@ -320,7 +320,7 @@
             }
         };
 
-        const { useState, useEffect, useCallback, useMemo, StrictMode } = React;
+        const { useState, useEffect, useCallback, useMemo } = React;
         const { createRoot } = ReactDOM;
 
         // --- From constants.tsx ---
@@ -869,11 +869,7 @@
         // --- From index.tsx ---
         const rootElement = document.getElementById('root');
         const root = createRoot(rootElement);
-        root.render(
-            <StrictMode>
-                <App />
-            </StrictMode>
-        );
+        root.render(<App />);
     })();
     </script>
 </body>
