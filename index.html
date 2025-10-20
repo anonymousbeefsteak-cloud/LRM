@@ -1,1083 +1,413 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>台灣小吃店 - LINE訂餐系統</title>
-    
-    <!-- Dependencies -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <!-- Note: The @google/generative-ai script is no longer needed on the client -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍜 台灣小吃店 - LINE訂餐系統</title>
     <style>
-        /* General Reset & Body Styles */
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        * {
             margin: 0;
-            background: linear-gradient(to bottom right, #f0fdf4, #eff6ff);
-            min-height: 100vh;
-            padding: 24px 12px;
+            padding: 0;
             box-sizing: border-box;
         }
-        #root {
-            height: 100%;
+
+        body {
+            font-family: 'Microsoft JhengHei', '微軟正黑體', Arial, sans-serif;
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
         }
 
-        /* Main App Container */
-        .app-container {
-            max-width: 28rem;
-            margin: auto;
-            background-color: white;
-            border-radius: 0.75rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             overflow: hidden;
-            position: relative;
         }
 
-        .screen {
-            display: flex;
-            flex-direction: column;
-            min-height: 100dvh;
-        }
-
-        .screen-main {
-            flex-grow: 1;
-            padding: 20px;
-            overflow-y: auto;
-        }
-
-        /* Header */
         .header {
-            background-color: #16a34a; /* bg-green-600 */
+            background: linear-gradient(135deg, #ff7e5f, #feb47b);
             color: white;
-            padding: 20px;
+            padding: 30px 20px;
             text-align: center;
-            position: relative;
-            border-top-left-radius: 0.75rem;
-            border-top-right-radius: 0.75rem;
         }
+
         .header h1 {
-            font-size: 1.5rem;
-            font-weight: bold;
+            font-size: 28px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
+
         .header p {
+            font-size: 16px;
             opacity: 0.9;
-            font-size: 0.875rem;
-        }
-        .header-decorator {
-            position: absolute;
-            bottom: 0;
-            left: 25%;
-            right: 25%;
-            height: 4px;
-            background-color: rgba(255, 255, 255, 0.3);
-            border-radius: 9999px;
-        }
-        .back-button {
-            position: absolute;
-            left: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            padding: 8px;
-            border-radius: 9999px;
-            transition: background-color 0.2s;
-        }
-        .back-button:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-        .back-button svg {
-            width: 1.5rem;
-            height: 1.5rem;
         }
 
-        /* Footer */
-        .footer {
-            text-align: center;
-            padding: 1rem;
-            color: #6b7280;
-            font-size: 0.75rem;
-            border-top: 1px solid #e5e7eb;
-            background-color: #f9fafb;
-            border-bottom-left-radius: 0.75rem;
-            border-bottom-right-radius: 0.75rem;
+        .form-section {
+            padding: 30px;
         }
 
-        /* Section Title */
-        .section-title {
-            font-size: 1.125rem;
-            font-weight: bold;
-            text-align: center;
-            color: #1f2937;
-            margin-bottom: 24px;
-            position: relative;
+        .form-group {
+            margin-bottom: 25px;
         }
-        .section-title::after {
-            content: '';
-            position: absolute;
-            bottom: -8px;
-            left: 25%;
-            right: 25%;
-            height: 2px;
-            background-color: #22c55e;
-        }
-        
-        /* Form Group & Inputs */
-        .form-group { margin-bottom: 1rem; }
-        .form-group label {
+
+        label {
             display: block;
-            margin-bottom: 0.5rem;
+            margin-bottom: 8px;
             font-weight: bold;
-            color: #374151;
-            font-size: 0.875rem;
+            color: #333;
+            font-size: 14px;
         }
-        .form-group input, .form-group select, .form-group textarea {
+
+        input, select, textarea {
             width: 100%;
-            padding: 0.5rem 0.75rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            transition: box-shadow 0.2s, border-color 0.2s;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+            font-family: inherit;
         }
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+
+        input:focus, select:focus, textarea:focus {
             outline: none;
-            border-color: #22c55e;
-            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.5);
+            border-color: #4ecdc4;
         }
-        .form-group input.error, .form-group textarea.error {
-            border-color: #ef4444;
-        }
-        .form-group input.error:focus, .form-group textarea.error:focus {
-            border-color: #ef4444;
-            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5);
-        }
-        .error-message { color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; }
 
-        /* LIFF Status */
-        .liff-status {
-            padding: 0.75rem;
-            margin-bottom: 1rem;
-            border-radius: 0.5rem;
-            font-size: 0.875rem;
-            text-align: center;
-            border-width: 1px;
+        .menu-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 2px solid #e9ecef;
+            transition: transform 0.2s ease;
         }
-        .liff-status.initializing { background-color: #e0f2fe; border-color: #38bdf8; color: #0c4a6e; }
-        .liff-status.ready { background-color: #dcfce7; border-color: #4ade80; color: #166534; }
-        .liff-status.logged_out { background-color: #fefce8; border-color: #facc15; color: #854d0e; }
-        .liff-status.error { background-color: #fee2e2; border-color: #f87171; color: #991b1b; }
 
-        /* Rich Menu Dashboard */
-        .rich-menu-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-            margin-top: 1.5rem;
+        .menu-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
-        .menu-button {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem; /* Adjusted padding for 2x3 grid */
-            border-radius: 0.75rem;
-            color: white;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            transform: translateY(0);
-            transition: transform 0.2s, box-shadow 0.2s;
-            aspect-ratio: 1 / 0.8;
-        }
-        .menu-button:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        }
-        .menu-button svg { width: 2.25rem; height: 2.25rem; } /* Adjusted icon size */
-        .menu-button span { margin-top: 0.75rem; font-weight: 600; font-size: 1rem; } /* Adjusted font size */
-        .bg-green-600 { background-color: #16a34a; } .bg-green-600:hover { background-color: #15803d; }
-        .bg-blue-500 { background-color: #3b82f6; } .bg-blue-500:hover { background-color: #2563eb; }
-        .bg-teal-500 { background-color: #14b8a6; } .bg-teal-500:hover { background-color: #0d9488; }
-        .bg-orange-500 { background-color: #f97316; } .bg-orange-500:hover { background-color: #ea580c; }
-        .bg-purple-500 { background-color: #8b5cf6; } .bg-purple-500:hover { background-color: #7c3aed; }
-        
-        /* Menu Section */
-        .menu-container {
-            background-color: #f9fafb;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            border: 1px solid #e5e7eb;
-            margin: 1rem 0;
-        }
-        .quick-add-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.5rem;
-        }
-        @media (min-width: 640px) {
-            .quick-add-grid { grid-template-columns: repeat(4, 1fr); }
-        }
-        .quick-add-btn {
-            width: 100%;
-            text-align: left;
-            padding: 0.5rem;
-            border: 1px solid #22c55e;
-            color: #166534;
-            border-radius: 0.375rem;
-            transition: background-color 0.2s, color 0.2s;
-            font-size: 0.875rem;
-        }
-        .quick-add-btn:hover { background-color: #22c55e; color: white; }
 
-        /* Cart Section */
-        .cart-container {
-            background-color: #fefce8;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            border: 1px solid #fde68a;
-            margin: 1rem 0;
-        }
-        .cart-item {
+        .item-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid #fde68a;
+            margin-bottom: 10px;
         }
-        .cart-item:last-child { border-bottom: none; }
-        .quantity-controls { display: flex; align-items: center; gap: 0.5rem; }
+
+        .item-name {
+            font-weight: bold;
+            color: #333;
+            flex: 1;
+        }
+
+        .item-price {
+            color: #ff6b6b;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
         .quantity-btn {
-            width: 1.75rem; height: 1.75rem; display: flex; align-items: center; justify-content: center;
-            border-radius: 9999px; color: white; transition: transform 0.2s, background-color 0.2s;
+            width: 35px;
+            height: 35px;
+            border: none;
+            border-radius: 50%;
+            background: #4ecdc4;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s ease;
         }
-        .quantity-btn:hover { transform: scale(1.1); }
-        .quantity-btn svg { width: 1rem; height: 1rem; }
-        .plus-minus-btn { background-color: #22c55e; } .plus-minus-btn:hover { background-color: #16a34a; }
-        .trash-btn { background-color: #ef4444; margin-left: 0.5rem; } .trash-btn:hover { background-color: #dc2626; }
-        .quantity-display { width: 1.5rem; text-align: center; font-weight: bold; }
 
-        /* Order Summary */
-        .summary-container {
-            background-color: #f0fdf4; padding: 1rem; border-radius: 0.5rem;
-            border: 1px solid #bbf7d0; margin: 1rem 0; font-size: 0.875rem;
+        .quantity-btn:hover {
+            background: #45b7af;
+            transform: scale(1.1);
         }
 
-        /* Submit Button */
-        .submit-btn {
-            width: 100%; margin-top: 1rem; padding: 1rem; background-color: #16a34a; color: white;
-            border-radius: 0.5rem; font-weight: bold; font-size: 1.125rem;
-            transition: all 0.3s;
-        }
-        .submit-btn:hover { background-color: #15803d; }
-        .submit-btn:disabled {
-            background-color: #9ca3af; cursor: not-allowed;
+        .quantity-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
             transform: none;
         }
-        .submit-btn:hover:not(:disabled) { transform: scale(1.05); }
 
-        /* Loading Overlay */
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        .loading-overlay {
-            position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.5);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 50;
-        }
-        .spinner {
-            width: 4rem; height: 4rem; border: 4px solid #e5e7eb;
-            border-top-color: #22c55e; border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        .loading-text { color: white; margin-top: 1rem; font-size: 1.125rem; }
-        
-        /* Notification Toast */
-        .notification-toast {
-            position: fixed; top: 1.25rem; right: 1.25rem; width: 91.666667%; max-width: 24rem;
-            padding: 1rem; border-radius: 0.5rem; color: white;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            transform: translateX(0);
-            transition: transform 0.3s ease-in-out;
-        }
-        .notification-toast.hidden { transform: translateX(110%); }
-        .notification-toast.success { background-color: #22c55e; }
-        .notification-toast.error { background-color: #ef4444; }
-        .notification-toast.warning { background-color: #f59e0b; }
-        .notification-toast p:first-child { font-weight: bold; }
-        .notification-toast p:last-child { font-size: 0.875rem; white-space: pre-wrap; }
-        
-        /* Backend Code Screen Styles */
-        .code-block {
-            background-color: #1e293b;
-            color: #e2e8f0;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1.5rem;
-            overflow-x: auto;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 0.875rem;
-        }
-        .code-block-title {
-            font-size: 1rem;
+        .quantity-display {
+            font-size: 18px;
             font-weight: bold;
-            color: #475569;
-            margin-bottom: 0.5rem;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 0.5rem;
+            min-width: 30px;
+            text-align: center;
         }
-        .instructions {
-            background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
-            padding: 1rem;
-            border-radius: 0.5rem;
+
+        .total-section {
+            background: #e8f5e8;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 25px 0;
+            text-align: center;
+            border: 2px solid #4ecdc4;
         }
-        .instructions h3 {
-            margin-top: 0;
-            color: #1e293b;
+
+        .total-amount {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2e7d32;
         }
-        .instructions ol {
-            padding-left: 1.5rem;
-            color: #334155;
+
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #ff7e5f, #feb47b);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            margin-bottom: 15px;
         }
-        .instructions li {
-            margin-bottom: 0.5rem;
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 126, 95, 0.4);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .confirmation-message {
+            background: #e3f2fd;
+            border: 2px solid #2196f3;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            white-space: pre-line;
+            line-height: 1.6;
+            display: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4ecdc4;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .delivery-option {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .delivery-option label {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .delivery-option input[type="radio"] {
+            display: none;
+        }
+
+        .delivery-option input[type="radio"]:checked + span {
+            background: #4ecdc4;
+            color: white;
+            border-color: #4ecdc4;
+        }
+
+        .delivery-option span {
+            display: block;
+            padding: 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .order-status {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .status-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            background: #f8f9fa;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .tab.active {
+            background: #4ecdc4;
+            color: white;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .menu-category {
+            margin-bottom: 25px;
+        }
+
+        .category-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #4ecdc4;
+        }
+
+        .notification {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .notification.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .notification.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .search-btn {
+            width: 100%;
+            padding: 12px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            margin-bottom: 15px;
+        }
+
+        .search-btn:hover {
+            background: #5a6268;
         }
     </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div class="container">
+        <div class="header">
+            <h1>🍜 台灣小吃店</h1>
+            <p>LINE訂餐系統 - 美味直送到府</p>
+        </div>
 
-    <script type="text/babel">
-    (function() {
-        // Mock 'process' for browser environment. This is no longer used for API keys.
-        window.process = { env: {} };
-
-        const { useState, useEffect, useCallback, useMemo } = React;
-        const { createRoot } = ReactDOM;
-
-        // --- From constants.tsx ---
-        const LIFF_ID = '2008316489-6nMjb0KX';
-        const DELIVERY_FEE = 30;
-        const MENU_ITEMS = [
-            { id: '1', name: '滷肉飯', price: 35, icon: '🍚' },
-            { id: '2', name: '雞肉飯', price: 40, icon: '🍗' },
-            { id: '3', name: '蚵仔煎', price: 65, icon: '🍳' },
-            { id: '4', name: '大腸麵線', price: 50, icon: '🍜' },
-            { id: '5', name: '珍珠奶茶', price: 45, icon: '🥤' },
-            { id: '6', name: '鹽酥雞', price: 60, icon: '🍖' },
-            { id: '7', name: '甜不辣', price: 40, icon: '🍢' },
-            { id: '8', name: '肉圓', price: 45, icon: '🥟' },
-        ];
-        const ICONS = {
-            PLUS: <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>,
-            MINUS: <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 12H6" /></svg>,
-            TRASH: <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
-        };
-        
-        // --- From services/geminiService.ts ---
-        const BACKEND_URL = 'http://localhost:3001';
-
-        const generateOrderConfirmation = async (orderData) => {
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/generate-confirmation`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(orderData)
-                });
-                
-                if (!response.ok) {
-                    // Try to get more info from the backend's response body
-                    const errorData = await response.json();
-                    throw new Error(errorData.confirmationMessage || 'Backend request failed');
-                }
-
-                const data = await response.json();
-                return data.confirmationMessage;
-            } catch (error) {
-                console.error("Backend API call failed:", error);
-                // Return a fallback message that indicates the error but still provides key info
-                return `✅ 訂單已收到，但AI確認訊息產生失敗。\n訂單編號: ERR-456\n總金額: $${orderData.totalAmount}\n我們將手動為您處理。`;
-            }
-        };
-
-        const submitOrder = async (orderData) => {
-             try {
-                const response = await fetch(`${BACKEND_URL}/api/submit-order`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(orderData),
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to submit order to the backend.');
-                }
-
-                console.log("Order successfully submitted to the backend.");
-                return true;
-            } catch (error) {
-                console.error('Error submitting order:', error);
-                return false;
-            }
-        };
-        
-        // --- From hooks/useLiff.ts ---
-        const useLiff = () => {
-            const [liffStatus, setLiffStatus] = useState('initializing');
-            const [userProfile, setUserProfile] = useState(null);
-            const [liffError, setLiffError] = useState(null);
-
-            const initializeLiff = useCallback(async () => {
-                try {
-                    const liff = window.liff;
-                    if (!liff) {
-                        throw new Error("LIFF SDK not found.");
-                    }
-                    await liff.init({ liffId: LIFF_ID });
-
-                    if (liff.isLoggedIn()) {
-                        const profile = await liff.getProfile();
-                        setUserProfile(profile);
-                        setLiffStatus('ready');
-                    } else {
-                        setLiffStatus('logged_out'); // Set status before redirecting
-                        liff.login(); // Automatically trigger login
-                    }
-                } catch (error) {
-                    console.error('LIFF initialization failed', error);
-                    setLiffStatus('error');
-
-                    let errorText;
-                    if (error instanceof Error) {
-                        // For standard Error objects, the stack provides the most info.
-                        errorText = error.stack || error.message;
-                    } else if (typeof error === 'object' && error !== null) {
-                        // For other objects, stringify to inspect contents.
-                        errorText = JSON.stringify(error);
-                    } else {
-                        // Fallback for primitives.
-                        errorText = String(error);
-                    }
-
-                    if (errorText.toLowerCase().includes('400 bad request')) {
-                        setLiffError('LINE 登入錯誤 (400)：\n您的 LINE 頻道可能處於「開發中」狀態。\n請將您的 LINE 帳號加為開發者，或在 LINE Developers Console 將頻道狀態設為「已發佈」。');
-                    } else {
-                        setLiffError('LINE 功能載入失敗，但仍可訂餐。');
-                    }
-                }
-            }, []);
-
-            useEffect(() => {
-                initializeLiff();
-            }, [initializeLiff]);
-
-            const sendMessage = useCallback(async (text) => {
-                const liff = window.liff;
-                if (liff && liff.isInClient()) {
-                    try {
-                        await liff.sendMessages([{ type: 'text', text }]);
-                        return { success: true };
-                    } catch (error) {
-                        console.error('Failed to send message', error);
-                        return { success: false, error };
-                    }
-                }
-                return { success: false, error: 'Not in LINE client' };
-            }, []);
-
-            const shareMessage = useCallback(async () => {
-                const liff = window.liff;
-                if (liff && liff.isInClient() && liff.isApiAvailable('shareTargetPicker')) {
-                    try {
-                        await liff.shareTargetPicker([
-                            {
-                                type: 'text',
-                                text: '這家台灣小吃超讚的，快來一起點！\nhttps://liff.line.me/' + LIFF_ID,
-                            },
-                        ]);
-                        return { success: true };
-                    } catch (error) {
-                        console.error('Failed to share message', error);
-                        return { success: false, error: error.code === 'USER_CANCEL' ? 'cancelled' : 'error' };
-                    }
-                }
-                return { success: false, error: 'Share API not available or not in LINE client' };
-            }, []);
-
-            return { liffStatus, userProfile, sendMessage, shareMessage, liffError };
-        };
-
-        // --- From hooks/useCart.ts ---
-        const useCart = () => {
-            const [items, setItems] = useState([]);
-
-            const addToCart = useCallback((menuItem) => {
-                setItems((prevItems) => {
-                    const existingItem = prevItems.find((item) => item.id === menuItem.id);
-                    if (existingItem) {
-                        return prevItems.map((item) =>
-                            item.id === menuItem.id
-                                ? { ...item, quantity: item.quantity + 1 }
-                                : item
-                        );
-                    }
-                    return [...prevItems, { ...menuItem, quantity: 1 }];
-                });
-            }, []);
-
-            const updateQuantity = useCallback((itemId, newQuantity) => {
-                if (newQuantity <= 0) {
-                    setItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
-                } else {
-                    setItems((prevItems) =>
-                        prevItems.map((item) =>
-                            item.id === itemId ? { ...item, quantity: newQuantity } : item
-                        )
-                    );
-                }
-            }, []);
-
-            const clearCart = useCallback(() => {
-                setItems([]);
-            }, []);
-
-            const subtotal = useMemo(() => {
-                return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-            }, [items]);
-
-            return { items, addToCart, updateQuantity, clearCart, subtotal };
-        };
-
-        // --- From components/Header.tsx ---
-        const Header = ({ onBack, title = "🍜 台灣小吃店", subtitle = "LINE 快速訂餐" }) => {
-            return (
-                <header className="header">
-                    {onBack && (
-                        <button onClick={onBack} className="back-button" aria-label="返回">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                            </svg>
-                        </button>
-                    )}
-                    <h1>{title}</h1>
-                    <p>{subtitle}</p>
-                    <div className="header-decorator"></div>
-                </header>
-            );
-        };
-
-        // --- From components/LiffStatus.tsx ---
-        const LiffStatusDisplay = ({ status, profile, error }) => {
-            const getStatusProps = () => {
-                switch (status) {
-                    case 'initializing': return { text: '🔄 初始化 LINE 功能中...', type: 'initializing' };
-                    case 'ready': return { text: `✅ 歡迎，${profile?.displayName || '用戶'}`, type: 'ready' };
-                    case 'logged_out': return { text: '🚀 正在導向至 LINE 登入頁面...', type: 'logged_out' };
-                    case 'error': return { text: `❌ ${error || 'LINE 功能載入失敗，但仍可訂餐'}`, type: 'error' };
-                    default: return { text: '', type: '' };
-                }
-            };
-            const { text, type } = getStatusProps();
-            return (
-                <div className={`liff-status ${type}`}>
-                    <p style={{ margin: 0, whiteSpace: 'pre-wrap', textAlign: status === 'error' ? 'left' : 'center' }}>{text}</p>
-                </div>
-            );
-        };
-
-        // --- From components/OrderForm.tsx ---
-        const FormGroup = ({ label, required, children, error }) => (
-            <div className="form-group">
-                <label>
-                    {label}
-                    {required && <span className="text-red-500"> *</span>}
-                </label>
-                {children}
-                {error && <p className="error-message">{error}</p>}
+        <div class="form-section">
+            <!-- 頁籤導航 -->
+            <div class="tab-container">
+                <button class="tab active" onclick="switchTab('order')">📱 線上訂餐</button>
+                <button class="tab" onclick="switchTab('status')">📋 訂單查詢</button>
+                <button class="tab" onclick="switchTab('menu')">🍜 完整菜單</button>
             </div>
-        );
 
-        const OrderForm = ({ customerName, setCustomerName, customerPhone, setCustomerPhone, pickupTime, setPickupTime, deliveryAddress, setDeliveryAddress, notes, setNotes, phoneError, timeError }) => {
-            return (
-                <React.Fragment>
-                    <FormGroup label="姓名" required>
-                        <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="自動帶入 LINE 名稱" />
-                    </FormGroup>
-                    <FormGroup label="手機號碼" required error={phoneError}>
-                        <input type="tel" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="0912345678" className={phoneError ? 'error' : ''} />
-                    </FormGroup>
-                    <FormGroup label="取餐時間" required error={timeError}>
-                        <input type="datetime-local" value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} className={timeError ? 'error' : ''} />
-                    </FormGroup>
-                    <FormGroup label="外送地點 (選填)">
-                        <input type="text" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="如需外送請填寫地址" />
-                        <p style={{fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem', fontStyle: 'italic'}}>※ 填寫地址將自動加收 $30 外送費</p>
-                    </FormGroup>
-                    <FormGroup label="備註 (選填)">
-                        <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="例如：不要香菜、加辣、餐具數量等"></textarea>
-                    </FormGroup>
-                </React.Fragment>
-            );
-        };
-        
-        // --- From components/Menu.tsx ---
-        const SectionTitle = ({ children }) => (
-            <h2 className="section-title">
-                {children}
-            </h2>
-        );
-        const Menu = ({ menuItems, onAddToCart }) => {
-            const quickAddItems = menuItems.filter(item => ['滷肉飯', '雞肉飯', '珍珠奶茶', '鹽酥雞'].includes(item.name));
-            return (
-                <div className="menu-container">
-                    <SectionTitle>📝 選擇餐點</SectionTitle>
-                    <label htmlFor="menuSelect" style={{display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#374151', fontSize: '0.875rem'}}>從菜單選擇</label>
-                    <select id="menuSelect" onChange={(e) => {
-                        if (e.target.value) {
-                            const selectedItem = menuItems.find(item => item.id === e.target.value);
-                            if (selectedItem) onAddToCart(selectedItem);
-                            e.target.value = "";
-                        }
-                    }}>
-                        <option value="">-- 請選擇餐點 --</option>
-                        {menuItems.map(item => <option key={item.id} value={item.id}>{item.icon} {item.name} - ${item.price}</option>)}
-                    </select>
-                    <div style={{marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb'}}>
-                        <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#374151', fontSize: '0.875rem'}}>快速選擇</label>
-                        <div className="quick-add-grid">
-                            {quickAddItems.map(item => <button key={item.id} type="button" onClick={() => onAddToCart(item)} className="quick-add-btn">{item.icon} {item.name}</button>)}
-                        </div>
+            <!-- 訂餐表單 -->
+            <div id="order-tab" class="tab-content active">
+                <div class="form-group">
+                    <label for="customerName">👤 顧客姓名 *</label>
+                    <input type="text" id="customerName" placeholder="請輸入您的姓名" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="customerPhone">📞 手機號碼 *</label>
+                    <input type="tel" id="customerPhone" placeholder="請輸入09開頭的手機號碼" required pattern="09[0-9]{8}">
+                </div>
+
+                <div class="form-group">
+                    <label for="pickupTime">⏰ 希望取餐時間 *</label>
+                    <input type="datetime-local" id="pickupTime" required>
+                </div>
+
+                <div class="form-group">
+                    <label>🚚 取餐方式</label>
+                    <div class="delivery-option">
+                        <label>
+                            <input type="radio" name="deliveryType" value="pickup" checked>
+                            <span>🏪 店內取餐</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="deliveryType" value="delivery">
+                            <span>🚗 外送服務</span>
+                        </label>
                     </div>
+                    <input type="text" id="deliveryAddress" placeholder="請輸入外送地址" style="display: none;">
                 </div>
-            );
-        };
 
-        // --- From components/Cart.tsx ---
-        const Cart = ({ items, onUpdateQuantity }) => {
-            return (
-                <div className="cart-container">
-                    <SectionTitle>🛒 訂單明細</SectionTitle>
-                    {items.length === 0 ? (
-                        <p style={{textAlign: 'center', color: '#6b7280', fontStyle: 'italic', padding: '1rem 0'}}>尚未選擇餐點</p>
-                    ) : (
-                        <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
-                            {items.map(item => (
-                                <div key={item.id} className="cart-item">
-                                    <div style={{flexGrow: 1}}>
-                                        <p style={{fontWeight: 'bold', color: '#1f2937'}}>{item.icon} {item.name}</p>
-                                        <p style={{fontSize: '0.875rem', color: '#4b5563'}}>${item.price} x {item.quantity} = ${item.price * item.quantity}</p>
-                                    </div>
-                                    <div className="quantity-controls">
-                                        <button type="button" onClick={() => onUpdateQuantity(item.id, item.quantity - 1)} className="quantity-btn plus-minus-btn">{ICONS.MINUS}</button>
-                                        <span className="quantity-display">{item.quantity}</span>
-                                        <button type="button" onClick={() => onUpdateQuantity(item.id, item.quantity + 1)} className="quantity-btn plus-minus-btn">{ICONS.PLUS}</button>
-                                        <button type="button" onClick={() => onUpdateQuantity(item.id, 0)} className="quantity-btn trash-btn">{ICONS.TRASH}</button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            );
-        };
-
-        // --- From components/OrderSummary.tsx ---
-        const OrderSummary = ({ subtotal, deliveryFee }) => {
-            const total = subtotal + deliveryFee;
-            return (
-                <div className="summary-container">
-                    <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', color: '#374151'}}>
-                        <span>餐點總計:</span><span>${subtotal}</span>
-                    </div>
-                    <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: '#374151'}}>
-                        <span>外送費:</span><span>${deliveryFee}</span>
-                    </div>
-                    <div style={{display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid #bbf7d0', fontWeight: 'bold', fontSize: '1.125rem', color: '#1f2937'}}>
-                        <span>總金額:</span><span>${total}</span>
-                    </div>
-                </div>
-            );
-        };
-        
-        // --- From components/Footer.tsx ---
-        const Footer = () => {
-            return (
-                <footer className="footer">
-                    <p>📍 營業時間: 10:00-21:00</p>
-                    <p>📞 聯絡電話: 02-1234-5678</p>
-                    <p style={{marginTop: '0.5rem', opacity: 0.7}}>系統版本: 4.1.0 (Client-Server-Integrated)</p>
-                </footer>
-            );
-        };
-
-        // --- From components/Notification.tsx ---
-        const Notification = ({ notification, onClose }) => {
-            useEffect(() => {
-                if (notification) {
-                    const timer = setTimeout(() => onClose(), 6000);
-                    return () => clearTimeout(timer);
-                }
-            }, [notification, onClose]);
-
-            if (!notification) return null;
-
-            return (
-                <div className={`notification-toast ${notification.type} ${!notification ? 'hidden' : ''}`}>
-                    <p>{notification.type.toUpperCase()}</p>
-                    <p>{notification.message}</p>
-                </div>
-            );
-        };
-        
-        // --- From components/LoadingOverlay.tsx ---
-        const LoadingOverlay = ({ isLoading }) => {
-            if (!isLoading) return null;
-            return (
-                <div className="loading-overlay">
-                    <div className="spinner"></div>
-                    <p className="loading-text">訂單發送中...</p>
-                </div>
-            );
-        };
-
-        // --- NEW COMPONENT: LiffLoadingScreen ---
-        const LiffLoadingScreen = ({ status, error }) => {
-            return (
-                <div className="screen" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
-                    {status === 'initializing' && <div className="spinner" style={{width: '3rem', height: '3rem'}}></div>}
-                    <div style={{ marginTop: '1.5rem', width: '100%' }}>
-                        {/* We don't have a profile object yet during initialization */}
-                        <LiffStatusDisplay status={status} error={error} profile={null} />
-                    </div>
-                </div>
-            );
-        };
-        
-        // --- From components/RichMenuDashboard.tsx ---
-        const RICH_MENU_ICONS = {
-            ORDER: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>,
-            INFO: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
-            SHARE: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12s-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" /></svg>,
-            FAQ: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
-            BACKEND: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 17.25v-.228a4.5 4.5 0 00-.12-1.03l-2.268-9.64a3.375 3.375 0 00-3.285-2.816H7.885a3.375 3.375 0 00-3.285 2.816l-2.268 9.64a4.5 4.5 0 00-.12 1.03v.228m19.5 0a3 3 0 01-3 3H5.25a3 3 0 01-3-3m19.5 0a3 3 0 00-3-3H5.25a3 3 0 00-3 3m16.5 0h.008v.008h-.008v-.008zm-3 0h.008v.008h-.008v-.008z" /></svg>,
-        };
-        const MenuButton = ({ icon, label, onClick, bgColorClass }) => (
-            <button onClick={onClick} className={`menu-button ${bgColorClass}`}>
-                {icon}
-                <span>{label}</span>
-            </button>
-        );
-        const RichMenuDashboard = ({ onNavigateToOrder, onNavigateToBackend, liffHook, showNotification }) => {
-            const { liffStatus, userProfile, shareMessage, liffError } = liffHook;
-            const handleShare = async () => {
-                const result = await shareMessage();
-                if (!result.success && result.error !== 'cancelled') {
-                    showNotification({ type: 'error', message: '分享功能僅限於 LINE App 內使用喔！' });
-                }
-            };
-            const handleShowInfo = () => alert('📍 營業時間: 10:00-21:00\n📞 聯絡電話: 02-1234-5678');
-            const handleShowFaq = () => alert('Q: 請問可以客製化嗎?\nA: 可以的，請在備註欄說明您的需求喔！');
-
-            return (
-                <div className="screen">
-                    <Header />
-                    <main className="screen-main">
-                        <LiffStatusDisplay status={liffStatus} profile={userProfile} error={liffError} />
-                        <div className="rich-menu-grid">
-                            <MenuButton icon={RICH_MENU_ICONS.ORDER} label="線上點餐" onClick={onNavigateToOrder} bgColorClass="bg-green-600" />
-                            <MenuButton icon={RICH_MENU_ICONS.INFO} label="營業資訊" onClick={handleShowInfo} bgColorClass="bg-blue-500" />
-                            <MenuButton icon={RICH_MENU_ICONS.SHARE} label="分享好友" onClick={handleShare} bgColorClass="bg-teal-500" />
-                            <MenuButton icon={RICH_MENU_ICONS.FAQ} label="常見問題" onClick={handleShowFaq} bgColorClass="bg-orange-500" />
-                            <MenuButton icon={RICH_MENU_ICONS.BACKEND} label="後端程式碼" onClick={onNavigateToBackend} bgColorClass="bg-purple-500" />
-                        </div>
-                    </main>
-                    <Footer />
-                </div>
-            );
-        };
-
-        // --- From components/OrderScreen.tsx ---
-        const OrderScreen = ({ onBack, liffHook, showNotification }) => {
-            const { liffStatus, userProfile, sendMessage, liffError } = liffHook;
-            const { items: cartItems, addToCart, updateQuantity, clearCart, subtotal } = useCart();
-            
-            const [customerName, setCustomerName] = useState('');
-            const [customerPhone, setCustomerPhone] = useState('');
-            const [pickupTime, setPickupTime] = useState('');
-            const [deliveryAddress, setDeliveryAddress] = useState('');
-            const [notes, setNotes] = useState('');
-            const [isLoading, setIsLoading] = useState(false);
-            const [phoneError, setPhoneError] = useState('');
-            const [timeError, setTimeError] = useState('');
-
-            const deliveryFee = deliveryAddress.trim() ? DELIVERY_FEE : 0;
-            const isOrderSubmittable = cartItems.length > 0;
-
-            const setDefaultPickupTime = useCallback(() => {
-                const now = new Date();
-                now.setMinutes(now.getMinutes() + 30);
-                const year = now.getFullYear();
-                const month = String(now.getMonth() + 1).padStart(2, '0');
-                const day = String(now.getDate()).padStart(2, '0');
-                const hours = String(now.getHours()).padStart(2, '0');
-                const minutes = String(now.getMinutes()).padStart(2, '0');
-                setPickupTime(`${year}-${month}-${day}T${hours}:${minutes}`);
-            }, []);
-
-            useEffect(() => { setDefaultPickupTime(); }, [setDefaultPickupTime]);
-            useEffect(() => { if (userProfile?.displayName) { setCustomerName(userProfile.displayName); } }, [userProfile]);
-            
-            const handleAddToCart = (item) => {
-                addToCart(item);
-                showNotification({ type: 'success', message: `已添加 ${item.name}` });
-            };
-
-            const validateForm = () => {
-                let isValid = true;
-                if (!/^09\d{8}$/.test(customerPhone)) { setPhoneError('請輸入正確的手機號碼 (09開頭，10位數字)'); isValid = false; } else { setPhoneError(''); }
-                if (!pickupTime) { setTimeError('請選擇取餐時間'); isValid = false; }
-                else if (new Date(pickupTime) < new Date()) { setTimeError('取餐時間不能是過去的時間'); isValid = false; }
-                else { setTimeError(''); }
-                if (cartItems.length === 0) { showNotification({ type: 'error', message: '請選擇至少一樣餐點' }); isValid = false; }
-                if (!customerName.trim()) { showNotification({ type: 'error', message: '請輸入您的姓名' }); isValid = false; }
-                return isValid;
-            };
-            
-            const resetForm = useCallback(() => {
-                clearCart(); setCustomerPhone(''); setDeliveryAddress(''); setNotes(''); setPhoneError(''); setTimeError('');
-                if (userProfile?.displayName) { setCustomerName(userProfile.displayName); }
-                setDefaultPickupTime();
-            }, [clearCart, setDefaultPickupTime, userProfile]);
-
-            const handleOrderSubmit = async () => {
-                if (!validateForm()) return;
-                setIsLoading(true);
-                
-                const orderData = {
-                    customerName: customerName,
-                    customerPhone: customerPhone,
-                    customerLineUserId: userProfile?.userId || '未綁定',
-                    items: cartItems,
-                    totalAmount: subtotal + deliveryFee,
-                    pickupTime: new Date(pickupTime).toLocaleString('zh-TW'),
-                    deliveryAddress: deliveryAddress || '無',
-                    notes: notes || '無',
-                    timestamp: new Date().toISOString()
-                };
-                
-                try {
-                    // First, submit the order to the backend to be saved
-                    await submitOrder(orderData);
+                <div class="form-group">
+                    <label>🍽️ 菜單選擇</label>
                     
-                    // Then, get the confirmation message from the backend
-                    const confirmationMessage = await generateOrderConfirmation(orderData);
-                    
-                    showNotification({ type: 'success', message: confirmationMessage });
-                    
-                    if (liffStatus === 'ready') {
-                        const liffMessage = `感謝您的訂購！\n訂單摘要：\n${cartItems.map(item => `${item.name} x${item.quantity}`).join('\n')}\n總金額: $${orderData.totalAmount}\n取餐時間: ${orderData.pickupTime}\n\n${confirmationMessage.split('\n')[0]}`;
-                        await sendMessage(liffMessage);
-                    }
-                    resetForm();
-                    onBack();
-                } catch (error) {
-                    showNotification({ type: 'error', message: `訂單發送失敗，請稍後再試。\n${error instanceof Error ? error.message : String(error)}` });
-                } finally {
-                    setIsLoading(false);
-                }
-            };
-
-            return (
-                <div className="screen">
-                    <LoadingOverlay isLoading={isLoading} />
-                    <Header onBack={onBack}/>
-                    <main className="screen-main">
-                        <LiffStatusDisplay status={liffStatus} profile={userProfile} error={liffError} />
-                        <OrderForm {...{ customerName, setCustomerName, customerPhone, setCustomerPhone, pickupTime, setPickupTime, deliveryAddress, setDeliveryAddress, notes, setNotes, phoneError, timeError }}/>
-                        <Menu menuItems={MENU_ITEMS} onAddToCart={handleAddToCart} />
-                        <Cart items={cartItems} onUpdateQuantity={updateQuantity} />
-                        <OrderSummary subtotal={subtotal} deliveryFee={deliveryFee} />
-                        <button onClick={handleOrderSubmit} disabled={!isOrderSubmittable || isLoading} className="submit-btn">✅ 送出訂單</button>
-                    </main>
-                    <Footer />
-                </div>
-            );
-        };
-        
-        // --- NEW COMPONENT: BackendCodeScreen ---
-        const BackendCodeScreen = ({ onBack }) => {
-            const packageJsonCode = `{
-  "name": "taiwan-snack-shop-backend",
-  "version": "1.0.0",
-  "description": "Backend for the Taiwanese Snack Shop LINE Ordering App",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "@google/generative-ai": "^0.15.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2"
-  }
-}`;
-            const serverJsCode = `// Import necessary packages
-const express = require('express');
-const cors = require('cors');
-require('dotenv').config(); // Load environment variables from .env file
-const { GoogleGenAI } = require('@google/generative-ai');
-
-// --- Initialization ---
-const app = express();
-const port = process.env.PORT || 3001;
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-const orders = []; // In-memory "database"
-
-// --- Middleware ---
-app.use(cors());
-app.use(express.json());
-
-// --- API Endpoints ---
-app.get('/', (req, res) => {
-  res.send('Taiwanese Snack Shop Backend is running! 🍜');
-});
-
-app.post('/api/generate-confirmation', async (req, res) => {
-  const orderData = req.body;
-  if (!process.env.API_KEY) {
-    return res.json({ 
-      confirmationMessage: \`✅ 訂單成功！\\n訂單編號: MOCK-123\\n總金額: \${orderData.totalAmount}\\n(注意: 這是一條模擬確認訊息，因為未設定API金鑰)\` 
-    });
-  }
-  try {
-    const prompt = \`
-      You are an AI assistant for '🍜 台灣小吃店'.
-      A customer has just submitted an order.
-      Please generate a friendly and humorous order confirmation message in Traditional Chinese.
-      The message should include a unique, fun order number.
-      Here is the order data:
-      \${JSON.stringify(orderData, null, 2)}
-      Generate only the confirmation message text. Keep it concise.
-    \`;
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash', contents: prompt,
-    });
-    res.json({ confirmationMessage: response.text });
-  } catch (error) {
-    console.error("Error calling Gemini API:", error);
-    res.status(500).json({ 
-      error: "AI confirmation message generation failed.",
-      confirmationMessage: \`✅ 訂單已收到，但AI確認訊息產生失敗。\\n訂單編號: ERR-456\\n總金額: \${orderData.totalAmount}\\n我們將手動為您處理。\`
-    });
-  }
-});
-
-app.post('/api/submit-order', (req, res) => {
-  const orderData = req.body;
-  const newOrder = {
-    orderId: \`order_\${Date.now()}\`, ...orderData,
-    receivedAt: new Date().toISOString()
-  };
-  orders.push(newOrder);
-  console.log('✅ New Order Received:');
-  console.log(JSON.stringify(newOrder, null, 2));
-  console.log(\`--- Total orders in memory: \${orders.length} ---\`);
-  res.status(201).json({ message: 'Order received!', order: newOrder });
-});
-
-// --- Start Server ---
-app.listen(port, () => {
-  console.log(\`🚀 Server listening at http://localhost:\${port}\`);
-});`;
-
-            const dotenvCode = `# .env file
-# This file should be in the root of your backend folder.
-# DO NOT commit this file to version control (e.g., git).
-
-# Your Google AI Studio API Key
-API_KEY="YOUR_GEMINI_API_KEY_HERE"
-
-# (Optional) You can change the port the server runs on
-# PORT=3001`;
-
-            return (
-                <div className="screen">
-                    <Header onBack={onBack} title="後端程式碼" subtitle="Node.js + Express"/>
-                    <main className="screen-main">
-                        <div className="instructions">
-                            <h3>🚀 後端設定指南</h3>
-                            <ol>
-                                <li>建立一個新資料夾 (例如: <code>snack-shop-backend</code>)。</li>
-                                <li>在資料夾中建立下面三個檔案，並複製貼上對應的程式碼。</li>
-                                <li>在 <code>.env</code> 檔案中填入您的 Gemini API 金鑰。</li>
-                                <li>打開終端機，進入該資料夾，然後執行 <code>npm install</code> 安裝套件。</li>
-                                <li>執行 <code>npm start</code> 來啟動後端伺服器。</li>
-                            </ol>
-                        </div>
+                    <div class="menu-category">
+                        <div class="category-title">🍚 主食類</div>
                         
-                        <div style={{marginTop: '1.5rem'}}>
-                            <h3 className="code-block-title">1. package.json</h3>
-                            <pre className="code-block"><code>{packageJsonCode}</code></pre>
-
-                            <h3 className="code-block-title">2. server.js</h3>
-                            <pre className="code-block"><code>{serverJsCode}</code></pre>
-
-                            <h3 className="code-block-title">3. .env</h3>
-                            <pre className="code-block"><code>{dotenvCode}</code></pre>
-                        </div>
-                    </main>
-                    <Footer />
-                </div>
-            );
-        };
-
-        // --- From App.tsx ---
-        const App = () => {
-            const [view, setView] = useState('menu');
-            const [notification, setNotification] = useState(null);
-            const liffHook = useLiff();
-            const { liffStatus, liffError } = liffHook;
-
-            const showNotification = (notification) => setNotification(notification);
-
-            // Prevent UI flash before redirect by showing a dedicated loading screen
-            if (liffStatus === 'initializing' || liffStatus === 'logged_out') {
-                return (
-                    <div className="app-container">
-                        <LiffLoadingScreen status={liffStatus} error={liffError} />
-                    </div>
-                );
-            }
-
-            const renderView = () => {
-                switch (view) {
-                    case 'order':
-                        return <OrderScreen onBack={() => setView('menu')} liffHook={liffHook} showNotification={showNotification} />;
-                    case 'backend':
-                        return <BackendCodeScreen onBack={() => setView('menu')} />;
-                    case 'menu':
-                    default:
-                        return <RichMenuDashboard 
-                                    onNavigateToOrder={() => setView('order')}
-                                    onNavigateToBackend={() => setView('backend')}
-                                    liffHook={liffHook} 
-                                    showNotification={showNotification}
-                                />;
-                }
-            };
-            
-            return (
-                <div className="app-container">
-                    <Notification notification={notification} onClose={() => setNotification(null)} />
-                    {renderView()}
-                </div>
-            );
-        };
-        
-        // --- From index.tsx ---
-        const rootElement = document.getElementById('root');
-        const root = createRoot(rootElement);
-        root.render(<App />);
-    })();
-    </script>
-</body>
-</html>
+                        <div class="menu-item" data-item="滷肉飯" data-price="35">
+                            <div class="item-header">
+                                <span class="item-name">🍚 
