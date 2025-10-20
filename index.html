@@ -382,6 +382,7 @@
         const useLiff = () => {
             const [liffStatus, setLiffStatus] = useState('initializing');
             const [userProfile, setUserProfile] = useState(null);
+            const [liffError, setLiffError] = useState(null);
 
             const initializeLiff = useCallback(async () => {
                 try {
@@ -401,6 +402,11 @@
                 } catch (error) {
                     console.error('LIFF initialization failed', error);
                     setLiffStatus('error');
+                    if (error && error.message && error.message.toLowerCase().includes('400 bad request')) {
+                        setLiffError('LINE 登入錯誤 (400)：\n您的 LINE 頻道可能處於「開發中」狀態。\n請將您的 LINE 帳號加為開發者，或在 LINE Developers Console 將頻道狀態設為「已發佈」。');
+                    } else {
+                        setLiffError('LINE 功能載入失敗，但仍可訂餐。');
+                    }
                 }
             }, []);
 
@@ -448,7 +454,7 @@
                 return { success: false, error: 'Share API not available or not in LINE client' };
             }, []);
 
-            return { liffStatus, userProfile, sendMessage, shareMessage, login };
+            return { liffStatus, userProfile, sendMessage, shareMessage, login, liffError };
         };
 
         // --- From hooks/useCart.ts ---
@@ -511,20 +517,20 @@
         };
 
         // --- From components/LiffStatus.tsx ---
-        const LiffStatusDisplay = ({ status, profile, onLogin }) => {
+        const LiffStatusDisplay = ({ status, profile, onLogin, error }) => {
             const getStatusProps = () => {
                 switch (status) {
                     case 'initializing': return { text: '🔄 初始化 LINE 功能中...', type: 'initializing' };
                     case 'ready': return { text: `✅ 歡迎，${profile?.displayName || '用戶'}`, type: 'ready' };
                     case 'logged_out': return { text: '👋 登入以自動帶入姓名並傳送訂單確認訊息', type: 'logged_out' };
-                    case 'error': return { text: '❌ LINE 功能載入失敗，但仍可訂餐', type: 'error' };
+                    case 'error': return { text: `❌ ${error || 'LINE 功能載入失敗，但仍可訂餐'}`, type: 'error' };
                     default: return { text: '', type: '' };
                 }
             };
             const { text, type } = getStatusProps();
             return (
                 <div className={`liff-status ${type}`}>
-                    <p style={{ margin: 0, paddingBottom: status === 'logged_out' ? '0.5rem' : 0 }}>{text}</p>
+                    <p style={{ margin: 0, paddingBottom: status === 'logged_out' ? '0.5rem' : 0, whiteSpace: 'pre-wrap', textAlign: status === 'error' ? 'left' : 'center' }}>{text}</p>
                     {status === 'logged_out' && onLogin && (
                         <button 
                             onClick={onLogin} 
@@ -717,7 +723,7 @@
             </button>
         );
         const RichMenuDashboard = ({ onNavigateToOrder, liffHook, showNotification }) => {
-            const { liffStatus, userProfile, shareMessage, login } = liffHook;
+            const { liffStatus, userProfile, shareMessage, login, liffError } = liffHook;
             const handleShare = async () => {
                 const result = await shareMessage();
                 if (!result.success && result.error !== 'cancelled') {
@@ -731,7 +737,7 @@
                 <div className="screen">
                     <Header />
                     <main className="screen-main">
-                        <LiffStatusDisplay status={liffStatus} profile={userProfile} onLogin={login} />
+                        <LiffStatusDisplay status={liffStatus} profile={userProfile} onLogin={login} error={liffError} />
                         <div className="rich-menu-grid">
                             <MenuButton icon={RICH_MENU_ICONS.ORDER} label="線上點餐" onClick={onNavigateToOrder} bgColorClass="bg-green-600" />
                             <MenuButton icon={RICH_MENU_ICONS.INFO} label="營業資訊" onClick={handleShowInfo} bgColorClass="bg-blue-500" />
@@ -746,7 +752,7 @@
 
         // --- From components/OrderScreen.tsx ---
         const OrderScreen = ({ onBack, liffHook, showNotification }) => {
-            const { liffStatus, userProfile, sendMessage, login } = liffHook;
+            const { liffStatus, userProfile, sendMessage, login, liffError } = liffHook;
             const { items: cartItems, addToCart, updateQuantity, clearCart, subtotal } = useCart();
             
             const [customerName, setCustomerName] = useState('');
@@ -834,7 +840,7 @@
                     <LoadingOverlay isLoading={isLoading} />
                     <Header onBack={onBack}/>
                     <main className="screen-main">
-                        <LiffStatusDisplay status={liffStatus} profile={userProfile} onLogin={login} />
+                        <LiffStatusDisplay status={liffStatus} profile={userProfile} onLogin={login} error={liffError} />
                         <OrderForm {...{ customerName, setCustomerName, customerPhone, setCustomerPhone, pickupTime, setPickupTime, deliveryAddress, setDeliveryAddress, notes, setNotes, phoneError, timeError }}/>
                         <Menu menuItems={MENU_ITEMS} onAddToCart={handleAddToCart} />
                         <Cart items={cartItems} onUpdateQuantity={updateQuantity} />
