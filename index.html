@@ -403,7 +403,20 @@
                 } catch (error) {
                     console.error('LIFF initialization failed', error);
                     setLiffStatus('error');
-                    if (String(error).toLowerCase().includes('400 bad request')) {
+
+                    let errorText;
+                    if (error instanceof Error) {
+                        // For standard Error objects, the stack provides the most info.
+                        errorText = error.stack || error.message;
+                    } else if (typeof error === 'object' && error !== null) {
+                        // For other objects, stringify to inspect contents.
+                        errorText = JSON.stringify(error);
+                    } else {
+                        // Fallback for primitives.
+                        errorText = String(error);
+                    }
+
+                    if (errorText.toLowerCase().includes('400 bad request')) {
                         setLiffError('LINE 登入錯誤 (400)：\n您的 LINE 頻道可能處於「開發中」狀態。\n請將您的 LINE 帳號加為開發者，或在 LINE Developers Console 將頻道狀態設為「已發佈」。');
                     } else {
                         setLiffError('LINE 功能載入失敗，但仍可訂餐。');
