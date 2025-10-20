@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -8,7 +9,6 @@
     <!-- Dependencies -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@google/generative-ai/dist/index.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
@@ -139,6 +139,7 @@
             border: 1px solid #d1d5db;
             border-radius: 0.5rem;
             transition: box-shadow 0.2s, border-color 0.2s;
+            box-sizing: border-box;
         }
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
             outline: none;
@@ -322,23 +323,16 @@
 
     <script type="text/babel">
     (function() {
-        // Mock 'process' for browser environment as per Gemini API guidelines
-        window.process = {
-            env: {
-                // IMPORTANT: This API_KEY is a placeholder. The execution environment
-                // is expected to replace this value. For local testing without a backend,
-                // you can paste your key here, but DO NOT commit it to version control.
-                API_KEY: '' 
-            }
-        };
-
         const { useState, useEffect, useCallback, useMemo, StrictMode } = React;
         const { createRoot } = ReactDOM;
 
         // --- From constants.tsx ---
         const LIFF_ID = '2008316489-6nMjb0KX';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbxec_ZhXtYbPLG2Xc7Qv1-E1fIAwQPfBvSZ6KaD44kQsEzc7DcQFBvhUBxwSJXNf1_Q/exec';
         const DELIVERY_FEE = 30;
-        const MENU_ITEMS = [
+        
+        // Fallback menu in case fetching from Google Sheets fails
+        const FALLBACK_MENU_ITEMS = [
             { id: '1', name: '滷肉飯', price: 35, icon: '🍚' },
             { id: '2', name: '雞肉飯', price: 40, icon: '🍗' },
             { id: '3', name: '蚵仔煎', price: 65, icon: '🍳' },
@@ -348,46 +342,11 @@
             { id: '7', name: '甜不辣', price: 40, icon: '🍢' },
             { id: '8', name: '肉圓', price: 45, icon: '🥟' },
         ];
+        
         const ICONS = {
             PLUS: <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>,
             MINUS: <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 12H6" /></svg>,
             TRASH: <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
-        };
-        
-        // --- From services/geminiService.ts ---
-        const generateOrderConfirmation = async (orderData) => {
-            if (!process.env.API_KEY) {
-                console.warn("API_KEY environment variable not set. Returning a mock response.");
-                return `✅ 訂單成功！\n訂單編號: MOCK-123\n總金額: $${orderData.totalAmount}\n(注意: 這是一條模擬確認訊息，因為未設定API金鑰)`;
-            }
-            try {
-                // The Gemini library is loaded via script tag and available on `window.google.generativeai`
-                const { GoogleGenAI } = window.google.generativeai;
-                const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-                const prompt = `
-                  You are an AI assistant for '🍜 台灣小吃店' (Taiwanese Snack Shop).
-                  A customer has just submitted an order through our LINE ordering system.
-                  Please generate a friendly and slightly humorous order confirmation message in Traditional Chinese (繁體中文).
-                  The message should:
-                  1. Confirm the order was received.
-                  2. Include a unique, fun order number (e.g., "珍奶-123" or "雞排-007").
-                  3. Briefly summarize the key details of the order.
-                  4. End with a warm closing.
-
-                  Here is the order data in JSON format:
-                  ${JSON.stringify(orderData, null, 2)}
-
-                  Generate only the confirmation message text. Keep it concise.
-                `;
-                const response = await ai.models.generateContent({
-                  model: 'gemini-2.5-flash',
-                  contents: prompt,
-                });
-                return response.text;
-            } catch (error) {
-                console.error("Gemini API call failed:", error);
-                return `✅ 訂單已收到，但AI確認訊息產生失敗。\n訂單編號: ERR-456\n總金額: $${orderData.totalAmount}\n我們將手動為您處理。`;
-            }
         };
         
         // --- From hooks/useLiff.ts ---
@@ -409,8 +368,6 @@
                         setLiffStatus('ready');
                     } else {
                         setLiffStatus('logged_out');
-                        // Automatically prompt for login if not already logged in.
-                        // This will redirect the user, and the page will reload.
                         liff.login();
                     }
                 } catch (error) {
@@ -423,40 +380,7 @@
                 initializeLiff();
             }, [initializeLiff]);
 
-            const sendMessage = useCallback(async (text) => {
-                const liff = window.liff;
-                if (liff && liff.isInClient()) {
-                    try {
-                        await liff.sendMessages([{ type: 'text', text }]);
-                        return { success: true };
-                    } catch (error) {
-                        console.error('Failed to send message', error);
-                        return { success: false, error };
-                    }
-                }
-                return { success: false, error: 'Not in LINE client' };
-            }, []);
-
-            const shareMessage = useCallback(async () => {
-                const liff = window.liff;
-                if (liff && liff.isInClient() && liff.isApiAvailable('shareTargetPicker')) {
-                    try {
-                        await liff.shareTargetPicker([
-                            {
-                                type: 'text',
-                                text: '這家台灣小吃超讚的，快來一起點！\nhttps://liff.line.me/' + LIFF_ID,
-                            },
-                        ]);
-                        return { success: true };
-                    } catch (error) {
-                        console.error('Failed to share message', error);
-                        return { success: false, error: error.code === 'USER_CANCEL' ? 'cancelled' : 'error' };
-                    }
-                }
-                return { success: false, error: 'Share API not available or not in LINE client' };
-            }, []);
-
-            return { liffStatus, userProfile, sendMessage, shareMessage };
+            return { liffStatus, userProfile };
         };
 
         // --- From hooks/useCart.ts ---
@@ -538,7 +462,7 @@
             <div className="form-group">
                 <label>
                     {label}
-                    {required && <span className="text-red-500"> *</span>}
+                    {required && <span style={{color: '#ef4444'}}> *</span>}
                 </label>
                 {children}
                 {error && <p className="error-message">{error}</p>}
@@ -559,7 +483,7 @@
                     </FormGroup>
                     <FormGroup label="外送地點 (選填)">
                         <input type="text" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="如需外送請填寫地址" />
-                        <p style={{fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem', fontStyle: 'italic'}}>※ 填寫地址將自動加收 $30 外送費</p>
+                        <p style={{fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem', fontStyle: 'italic'}}>※ 填寫地址將自動加收 ${DELIVERY_FEE} 外送費</p>
                     </FormGroup>
                     <FormGroup label="備註 (選填)">
                         <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="例如：不要香菜、加辣、餐具數量等"></textarea>
@@ -582,19 +506,18 @@
                     <label htmlFor="menuSelect" style={{display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#374151', fontSize: '0.875rem'}}>從菜單選擇</label>
                     <select id="menuSelect" onChange={(e) => {
                         if (e.target.value) {
-                            const selectedItem = menuItems.find(item => item.id === e.target.value);
+                            const selectedItem = menuItems.find(item => String(item.id) === e.target.value);
                             if (selectedItem) onAddToCart(selectedItem);
                             e.target.value = "";
                         }
-                    }}>
+                    }} style={{marginBottom: '1rem'}}>
                         <option value="">-- 請選擇餐點 --</option>
                         {menuItems.map(item => <option key={item.id} value={item.id}>{item.icon} {item.name} - ${item.price}</option>)}
                     </select>
-                    <div style={{marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb'}}>
-                        <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#374151', fontSize: '0.875rem'}}>快速選擇</label>
-                        <div className="quick-add-grid">
-                            {quickAddItems.map(item => <button key={item.id} type="button" onClick={() => onAddToCart(item)} className="quick-add-btn">{item.icon} {item.name}</button>)}
-                        </div>
+                    
+                    <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#374151', fontSize: '0.875rem'}}>快速選擇</label>
+                    <div className="quick-add-grid">
+                        {quickAddItems.map(item => <button key={item.id} type="button" onClick={() => onAddToCart(item)} className="quick-add-btn">{item.icon} {item.name}</button>)}
                     </div>
                 </div>
             );
@@ -653,7 +576,7 @@
                 <footer className="footer">
                     <p>📍 營業時間: 10:00-21:00</p>
                     <p>📞 聯絡電話: 02-1234-5678</p>
-                    <p style={{marginTop: '0.5rem', opacity: 0.7}}>系統版本: 3.2.0 (Auto Login)</p>
+                    <p style={{marginTop: '0.5rem', opacity: 0.7}}>系統版本: 5.1.0 (Pre-configured)</p>
                 </footer>
             );
         };
@@ -678,12 +601,12 @@
         };
         
         // --- From components/LoadingOverlay.tsx ---
-        const LoadingOverlay = ({ isLoading }) => {
+        const LoadingOverlay = ({ isLoading, text = "處理中..." }) => {
             if (!isLoading) return null;
             return (
                 <div className="loading-overlay">
                     <div className="spinner"></div>
-                    <p className="loading-text">訂單發送中...</p>
+                    <p className="loading-text">{text}</p>
                 </div>
             );
         };
@@ -695,7 +618,7 @@
             CONTACT: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.62,10.79C8.06,13.62 10.38,15.94 13.21,17.38L15.41,15.18C15.69,14.9 16.08,14.82 16.43,14.93C17.55,15.3 18.75,15.5 20,15.5A1,1,0,0,1,21,16.5V20a1,1,0,0,1-1,1C10.21,21 3,13.79 3,4A1,1,0,0,1,4,3H7.5A1,1,0,0,1,8.5,4c0,1.25,0.2,2.45,0.57,3.57C9.18,7.92 9.1,8.31 8.82,8.59L6.62,10.79Z"/></svg>,
             ORDER_INQUIRY: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.5,3A6.5,6.5,0,0,1,16,9.5c0,1.61-.59,3.09-1.57,4.23l.27.27h.79l5,5-1.5,1.5-5-5v-.79l-.27-.27A6.5,6.5,0,0,1,9.5,16,6.5,6.5,0,0,1,3,9.5,6.5,6.5,0,0,1,9.5,3M9.5,5C7,5,5,7,5,9.5S7,14,9.5,14,14,12,14,9.5,12,5,9.5,5Z"/></svg>,
             LOCATION: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12,11.5A2.5,2.5,0,0,1,9.5,9A2.5,2.5,0,0,1,12,6.5A2.5,2.5,0,0,1,14.5,9A2.5,2.5,0,0,1,12,11.5M12,2A7,7,0,0,0,5,9c0,5.25,7,13,7,13s7-7.75,7-13A7,7,0,0,0,12,2Z"/></svg>,
-            PROMOTIONS: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20,2H4C2.9,2,2,2.9,2,4v16c0,1.1,0.9,2,2,2h16c1.1,0,2-0.9,2-2V4C22,2.9,21.1,2,20,2z M10.4,15.5L8,12.7l1.4-1.4l1,1l3.6-4.2l1.4,1.4L10.4,15.5z"/></svg>,
+            PROMOTIONS: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.3,12.5l-0.8,3.3l-0.8-3.3l-3.3-0.8l3.3-0.8l0.8-3.3l0.8,3.3l3.3,0.8L12.3,12.5z M19.3,9.3l-1.4,0.4l-0.4-1.4l1.4-0.4L19.3,9.3z M19.3,18.7l-1.4-0.4l-0.4,1.4l1.4,0.4L19.3,18.7z M4.7,9.3l1.4,0.4l0.4-1.4L4.7,7.9L4.7,9.3z M12,2L9.5,9.5L2,12l7.5,2.5L12,22l2.5-7.5L22,12L14.5,9.5L12,2z"/></svg>,
         };
         const MenuButton = ({ icon, label, onClick, bgColorClass }) => (
             <button onClick={onClick} className={`menu-button ${bgColorClass}`}>
@@ -732,8 +655,8 @@
         };
 
         // --- From components/OrderScreen.tsx ---
-        const OrderScreen = ({ onBack, liffHook, showNotification }) => {
-            const { liffStatus, userProfile, sendMessage } = liffHook;
+        const OrderScreen = ({ onBack, liffHook, showNotification, menuItems, gasUrl }) => {
+            const { liffStatus, userProfile } = liffHook;
             const { items: cartItems, addToCart, updateQuantity, clearCart, subtotal } = useCart();
             
             const [customerName, setCustomerName] = useState('');
@@ -788,29 +711,50 @@
                 if (!validateForm()) return;
                 setIsLoading(true);
                 
+                const itemsForBackend = cartItems.map(({ id, name, price, quantity }) => ({ id, name, price, quantity }));
+
                 const orderData = {
-                    customerName: customerName,
-                    customerPhone: customerPhone,
+                    customerName: customerName.trim(),
+                    customerPhone: customerPhone.trim(),
                     customerLineUserId: userProfile?.userId || '未綁定',
-                    items: cartItems,
+                    items: itemsForBackend,
+                    subtotal: subtotal,
+                    deliveryFee: deliveryFee,
                     totalAmount: subtotal + deliveryFee,
-                    pickupTime: new Date(pickupTime).toLocaleString('zh-TW'),
-                    deliveryAddress: deliveryAddress || '無',
-                    notes: notes || '無',
-                    timestamp: new Date().toISOString()
+                    pickupTime: new Date(pickupTime).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }),
+                    deliveryAddress: deliveryAddress.trim() || '無',
+                    notes: notes.trim() || '無',
+                    paymentMethod: '現場付款'
                 };
                 
                 try {
-                    const confirmationMessage = await generateOrderConfirmation(orderData);
-                    showNotification({ type: 'success', message: confirmationMessage });
-                    if (liffStatus === 'ready') {
-                        const liffMessage = `感謝您的訂購！\n訂單摘要：\n${cartItems.map(item => `${item.name} x${item.quantity}`).join('\n')}\n總金額: $${orderData.totalAmount}\n取餐時間: ${orderData.pickupTime}\n\n${confirmationMessage.split('\n')[0]}`;
-                        await sendMessage(liffMessage);
+                    const response = await fetch(gasUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Use text/plain to avoid CORS preflight
+                        body: JSON.stringify({ action: 'submitOrder', orderData: orderData }),
+                        redirect: 'follow'
+                    });
+                    
+                    if (!response.ok) {
+                        let errorMsg = `伺服器錯誤: ${response.status}`;
+                        try {
+                            const errData = await response.json();
+                            errorMsg = errData.error || errorMsg;
+                        } catch (e) { /* response might not be json */ }
+                        throw new Error(errorMsg);
                     }
-                    resetForm();
-                    onBack();
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        showNotification({ type: 'success', message: `${result.message}！訂單編號: ${result.orderId}。確認訊息將透過 LINE 發送。` });
+                        resetForm();
+                        onBack();
+                    } else {
+                        throw new Error(result.error || '後端回報訂單提交失敗');
+                    }
                 } catch (error) {
-                    showNotification({ type: 'error', message: `訂單發送失敗，請稍後再試。\n${error instanceof Error ? error.message : String(error)}` });
+                    showNotification({ type: 'error', message: `訂單發送失敗：${error instanceof Error ? error.message : String(error)}` });
                 } finally {
                     setIsLoading(false);
                 }
@@ -818,12 +762,12 @@
 
             return (
                 <div className="screen">
-                    <LoadingOverlay isLoading={isLoading} />
+                    <LoadingOverlay isLoading={isLoading} text="訂單發送中..." />
                     <Header onBack={onBack}/>
                     <main className="screen-main">
                         <LiffStatusDisplay status={liffStatus} profile={userProfile} />
                         <OrderForm {...{ customerName, setCustomerName, customerPhone, setCustomerPhone, pickupTime, setPickupTime, deliveryAddress, setDeliveryAddress, notes, setNotes, phoneError, timeError }}/>
-                        <Menu menuItems={MENU_ITEMS} onAddToCart={handleAddToCart} />
+                        <Menu menuItems={menuItems} onAddToCart={handleAddToCart} />
                         <Cart items={cartItems} onUpdateQuantity={updateQuantity} />
                         <OrderSummary subtotal={subtotal} deliveryFee={deliveryFee} />
                         <button onClick={handleOrderSubmit} disabled={!isOrderSubmittable || isLoading} className="submit-btn">✅ 送出訂單</button>
@@ -837,17 +781,63 @@
         const App = () => {
             const [view, setView] = useState('menu');
             const [notification, setNotification] = useState(null);
+            const [menuItems, setMenuItems] = useState([]);
+            const [menuStatus, setMenuStatus] = useState('loading'); // 'loading', 'loaded', 'error'
             const liffHook = useLiff();
+            
+            const showNotification = useCallback((notification) => {
+                setNotification(notification);
+            }, []);
+            
+            useEffect(() => {
+                const fetchMenu = async () => {
+                    try {
+                        const response = await fetch(GAS_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({ action: 'getMenu' }),
+                            redirect: 'follow',
+                        });
 
-            const showNotification = (notification) => setNotification(notification);
+                        if (!response.ok) throw new Error(`伺服器回應錯誤，狀態碼: ${response.status}`);
+                        const data = await response.json();
+                        if (!Array.isArray(data)) throw new Error("從伺服器收到的菜單格式不正確。");
 
+                        const menuWithIcons = data
+                            .filter(item => item.available)
+                            .map(item => {
+                                const localItem = FALLBACK_MENU_ITEMS.find(mi => mi.id === String(item.id));
+                                return { ...item, icon: localItem ? localItem.icon : '🍲' };
+                            });
+
+                        setMenuItems(menuWithIcons);
+                        setMenuStatus('loaded');
+                    } catch (error) {
+                        console.error('Failed to fetch menu:', error);
+                        showNotification({ type: 'error', message: `無法載入菜單，請檢查網路連線或後端設定。將使用備用菜單。` });
+                        setMenuItems(FALLBACK_MENU_ITEMS);
+                        setMenuStatus('error');
+                    }
+                };
+
+                fetchMenu();
+            }, [showNotification]);
+
+            if (menuStatus === 'loading') {
+                return (
+                    <div className="app-container">
+                        <LoadingOverlay isLoading={true} text="菜單載入中..." />
+                    </div>
+                );
+            }
+    
             return (
                 <div className="app-container">
                     <Notification notification={notification} onClose={() => setNotification(null)} />
                     {view === 'menu' ? (
                         <RichMenuDashboard onNavigateToOrder={() => setView('order')} liffHook={liffHook} showNotification={showNotification}/>
                     ) : (
-                        <OrderScreen onBack={() => setView('menu')} liffHook={liffHook} showNotification={showNotification} />
+                        <OrderScreen onBack={() => setView('menu')} liffHook={liffHook} showNotification={showNotification} menuItems={menuItems} gasUrl={GAS_URL} />
                     )}
                 </div>
             );
