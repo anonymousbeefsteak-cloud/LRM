@@ -171,8 +171,8 @@
         /* Rich Menu Dashboard */
         .rich-menu-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
             margin-top: 1.5rem;
         }
         .menu-button {
@@ -180,24 +180,36 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 1.5rem;
+            padding: 1rem;
             border-radius: 0.75rem;
             color: white;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
             transform: translateY(0);
             transition: transform 0.2s, box-shadow 0.2s;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.07), rgba(0, 0, 0, 0.07));
+            border: none;
+            cursor: pointer;
         }
         .menu-button:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
         }
-        .menu-button svg { width: 2.5rem; height: 2.5rem; }
-        .menu-button span { margin-top: 0.75rem; font-weight: 600; font-size: 1.125rem; }
+        .menu-button svg {
+            width: 2.25rem;
+            height: 2.25rem;
+        }
+        .menu-button span {
+            margin-top: 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
         .bg-green-600 { background-color: #16a34a; } .bg-green-600:hover { background-color: #15803d; }
         .bg-blue-500 { background-color: #3b82f6; } .bg-blue-500:hover { background-color: #2563eb; }
-        .bg-teal-500 { background-color: #14b8a6; } .bg-teal-500:hover { background-color: #0d9488; }
         .bg-orange-500 { background-color: #f97316; } .bg-orange-500:hover { background-color: #ea580c; }
-        
+        .bg-purple-500 { background-color: #8b5cf6; } .bg-purple-500:hover { background-color: #7c3aed; }
+        .bg-red-600 { background-color: #c53030; } .bg-red-600:hover { background-color: #a02828; }
+        .bg-yellow-600 { background-color: #d69e2e; } .bg-yellow-600:hover { background-color: #b08225; }
+
         /* Menu Section */
         .menu-container {
             background-color: #f9fafb;
@@ -678,10 +690,12 @@
         
         // --- From components/RichMenuDashboard.tsx ---
         const RICH_MENU_ICONS = {
-            ORDER: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>,
-            INFO: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
-            SHARE: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12s-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" /></svg>,
-            FAQ: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+            ONLINE_ORDER: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4.63,16.27V14.14H19.37v2.13c0,1.4-1.12,2.53-2.5,2.53H7.13C5.75,18.8,4.63,17.67,4.63,16.27M19.37,12.7H4.63a3.5,3.5,0,0,1-3.5-3.5,1,1,0,0,1,1-1H21.87a1,1,0,0,1,1,1,3.5,3.5,0,0,1-3.5,3.5Z"/><path d="M7.89,6.5A2.74,2.74,0,0,1,5.63,4.6,2.68,2.68,0,0,1,7.2,2.13a.75.75,0,1,1,.7,1.3,1.21,1.21,0,0,0-.49.88,1.22,1.22,0,0,0,1.21,1.22.75.75,0,0,1,0,1.5,2.71,2.71,0,0,1-1.07-.23Z"/><path d="M12.37,6.5a2.74,2.74,0,0,1-2.26-1.9,2.68,2.68,0,0,1,1.57-2.47.75.75,0,1,1,.7,1.3,1.21,1.21,0,0,0-.49.88,1.22,1.22,0,0,0,1.21,1.22.75.75,0,0,1,0,1.5,2.71,2.71,0,0,1-1.07-.23Z"/><path d="M16.84,6.5a2.74,2.74,0,0,1-2.26-1.9,2.68,2.68,0,0,1,1.57-2.47.75.75,0,1,1,.7,1.3,1.21,1.21,0,0,0-.49.88,1.22,1.22,0,0,0,1.21,1.22.75.75,0,0,1,0,1.5,2.71,2.71,0,0,1-1.07-.23Z"/></svg>,
+            VIEW_MENU: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14,2H6A2,2,0,0,0,4,4V20a2,2,0,0,0,2,2H18a2,2,0,0,0,2-2V8Zm2,16H8V16h8Zm0-4H8V12h8Zm-2-6V4.5L18.5,9Z"/></svg>,
+            CONTACT: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.62,10.79C8.06,13.62 10.38,15.94 13.21,17.38L15.41,15.18C15.69,14.9 16.08,14.82 16.43,14.93C17.55,15.3 18.75,15.5 20,15.5A1,1,0,0,1,21,16.5V20a1,1,0,0,1-1,1C10.21,21 3,13.79 3,4A1,1,0,0,1,4,3H7.5A1,1,0,0,1,8.5,4c0,1.25,0.2,2.45,0.57,3.57C9.18,7.92 9.1,8.31 8.82,8.59L6.62,10.79Z"/></svg>,
+            ORDER_INQUIRY: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.5,3A6.5,6.5,0,0,1,16,9.5c0,1.61-.59,3.09-1.57,4.23l.27.27h.79l5,5-1.5,1.5-5-5v-.79l-.27-.27A6.5,6.5,0,0,1,9.5,16,6.5,6.5,0,0,1,3,9.5,6.5,6.5,0,0,1,9.5,3M9.5,5C7,5,5,7,5,9.5S7,14,9.5,14,14,12,14,9.5,12,5,9.5,5Z"/></svg>,
+            LOCATION: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12,11.5A2.5,2.5,0,0,1,9.5,9A2.5,2.5,0,0,1,12,6.5A2.5,2.5,0,0,1,14.5,9A2.5,2.5,0,0,1,12,11.5M12,2A7,7,0,0,0,5,9c0,5.25,7,13,7,13s7-7.75,7-13A7,7,0,0,0,12,2Z"/></svg>,
+            PROMOTIONS: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20,2H4C2.9,2,2,2.9,2,4v16c0,1.1,0.9,2,2,2h16c1.1,0,2-0.9,2-2V4C22,2.9,21.1,2,20,2z M10.4,15.5L8,12.7l1.4-1.4l1,1l3.6-4.2l1.4,1.4L10.4,15.5z"/></svg>,
         };
         const MenuButton = ({ icon, label, onClick, bgColorClass }) => (
             <button onClick={onClick} className={`menu-button ${bgColorClass}`}>
@@ -690,15 +704,13 @@
             </button>
         );
         const RichMenuDashboard = ({ onNavigateToOrder, liffHook, showNotification }) => {
-            const { liffStatus, userProfile, shareMessage } = liffHook;
-            const handleShare = async () => {
-                const result = await shareMessage();
-                if (!result.success && result.error !== 'cancelled') {
-                    showNotification({ type: 'error', message: '分享功能僅限於 LINE App 內使用喔！' });
-                }
-            };
-            const handleShowInfo = () => alert('📍 營業時間: 10:00-21:00\n📞 聯絡電話: 02-1234-5678');
-            const handleShowFaq = () => alert('Q: 請問可以客製化嗎?\nA: 可以的，請在備註欄說明您的需求喔！');
+            const { liffStatus, userProfile } = liffHook;
+
+            const handleViewMenu = onNavigateToOrder;
+            const handleContactSupport = () => alert('📞 聯絡客服請撥打: 02-1234-5678');
+            const handleOrderInquiry = () => showNotification({ type: 'warning', message: '訂單查詢功能即將推出，敬請期待！' });
+            const handleLocationInfo = () => alert('📍 本店地址：\n台北市信義區市府路45號\n\n🕒 營業時間: 10:00-21:00');
+            const handlePromotions = () => showNotification({ type: 'success', message: '目前沒有特別的優惠活動，但我們的滷肉飯天天都好吃！' });
 
             return (
                 <div className="screen">
@@ -706,10 +718,12 @@
                     <main className="screen-main">
                         <LiffStatusDisplay status={liffStatus} profile={userProfile} />
                         <div className="rich-menu-grid">
-                            <MenuButton icon={RICH_MENU_ICONS.ORDER} label="線上點餐" onClick={onNavigateToOrder} bgColorClass="bg-green-600" />
-                            <MenuButton icon={RICH_MENU_ICONS.INFO} label="營業資訊" onClick={handleShowInfo} bgColorClass="bg-blue-500" />
-                            <MenuButton icon={RICH_MENU_ICONS.SHARE} label="分享好友" onClick={handleShare} bgColorClass="bg-teal-500" />
-                            <MenuButton icon={RICH_MENU_ICONS.FAQ} label="常見問題" onClick={handleShowFaq} bgColorClass="bg-orange-500" />
+                            <MenuButton icon={RICH_MENU_ICONS.ONLINE_ORDER} label="線上訂餐" onClick={onNavigateToOrder} bgColorClass="bg-green-600" />
+                            <MenuButton icon={RICH_MENU_ICONS.VIEW_MENU} label="查看菜單" onClick={handleViewMenu} bgColorClass="bg-blue-500" />
+                            <MenuButton icon={RICH_MENU_ICONS.CONTACT} label="聯絡客服" onClick={handleContactSupport} bgColorClass="bg-orange-500" />
+                            <MenuButton icon={RICH_MENU_ICONS.ORDER_INQUIRY} label="訂單查詢" onClick={handleOrderInquiry} bgColorClass="bg-purple-500" />
+                            <MenuButton icon={RICH_MENU_ICONS.LOCATION} label="位置資訊" onClick={handleLocationInfo} bgColorClass="bg-red-600" />
+                            <MenuButton icon={RICH_MENU_ICONS.PROMOTIONS} label="優惠活動" onClick={handlePromotions} bgColorClass="bg-yellow-600" />
                         </div>
                     </main>
                     <Footer />
