@@ -407,6 +407,13 @@
             useEffect(() => {
                 initializeLiff();
             }, [initializeLiff]);
+            
+            const login = useCallback(() => {
+                const liff = window.liff;
+                if (liff) {
+                    liff.login();
+                }
+            }, []);
 
             const sendMessage = useCallback(async (text) => {
                 const liff = window.liff;
@@ -441,7 +448,7 @@
                 return { success: false, error: 'Share API not available or not in LINE client' };
             }, []);
 
-            return { liffStatus, userProfile, sendMessage, shareMessage };
+            return { liffStatus, userProfile, sendMessage, shareMessage, login };
         };
 
         // --- From hooks/useCart.ts ---
@@ -504,18 +511,41 @@
         };
 
         // --- From components/LiffStatus.tsx ---
-        const LiffStatusDisplay = ({ status, profile }) => {
+        const LiffStatusDisplay = ({ status, profile, onLogin }) => {
             const getStatusProps = () => {
                 switch (status) {
                     case 'initializing': return { text: '🔄 初始化 LINE 功能中...', type: 'initializing' };
                     case 'ready': return { text: `✅ 歡迎，${profile?.displayName || '用戶'}`, type: 'ready' };
-                    case 'logged_out': return { text: '👋 可直接訂餐，或在LINE中開啟以綁定帳號', type: 'logged_out' };
+                    case 'logged_out': return { text: '👋 登入以自動帶入姓名並傳送訂單確認訊息', type: 'logged_out' };
                     case 'error': return { text: '❌ LINE 功能載入失敗，但仍可訂餐', type: 'error' };
                     default: return { text: '', type: '' };
                 }
             };
             const { text, type } = getStatusProps();
-            return <div className={`liff-status ${type}`}>{text}</div>;
+            return (
+                <div className={`liff-status ${type}`}>
+                    <p style={{ margin: 0, paddingBottom: status === 'logged_out' ? '0.5rem' : 0 }}>{text}</p>
+                    {status === 'logged_out' && onLogin && (
+                        <button 
+                            onClick={onLogin} 
+                            style={{
+                                padding: '0.5rem 1rem',
+                                border: 'none',
+                                borderRadius: '0.375rem',
+                                backgroundColor: '#16a34a',
+                                color: 'white',
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                transition: 'background-color 0.2s'
+                            }}
+                            onMouseOver={e => e.currentTarget.style.backgroundColor = '#15803d'}
+                            onMouseOut={e => e.currentTarget.style.backgroundColor = '#16a34a'}
+                        >
+                            👋 綁定LINE帳號
+                        </button>
+                    )}
+                </div>
+            );
         };
 
         // --- From components/OrderForm.tsx ---
@@ -638,7 +668,7 @@
                 <footer className="footer">
                     <p>📍 營業時間: 10:00-21:00</p>
                     <p>📞 聯絡電話: 02-1234-5678</p>
-                    <p style={{marginTop: '0.5rem', opacity: 0.7}}>系統版本: 3.1.0 (Single File)</p>
+                    <p style={{marginTop: '0.5rem', opacity: 0.7}}>系統版本: 3.2.0 (Single File)</p>
                 </footer>
             );
         };
@@ -687,7 +717,7 @@
             </button>
         );
         const RichMenuDashboard = ({ onNavigateToOrder, liffHook, showNotification }) => {
-            const { liffStatus, userProfile, shareMessage } = liffHook;
+            const { liffStatus, userProfile, shareMessage, login } = liffHook;
             const handleShare = async () => {
                 const result = await shareMessage();
                 if (!result.success && result.error !== 'cancelled') {
@@ -701,7 +731,7 @@
                 <div className="screen">
                     <Header />
                     <main className="screen-main">
-                        <LiffStatusDisplay status={liffStatus} profile={userProfile} />
+                        <LiffStatusDisplay status={liffStatus} profile={userProfile} onLogin={login} />
                         <div className="rich-menu-grid">
                             <MenuButton icon={RICH_MENU_ICONS.ORDER} label="線上點餐" onClick={onNavigateToOrder} bgColorClass="bg-green-600" />
                             <MenuButton icon={RICH_MENU_ICONS.INFO} label="營業資訊" onClick={handleShowInfo} bgColorClass="bg-blue-500" />
@@ -716,7 +746,7 @@
 
         // --- From components/OrderScreen.tsx ---
         const OrderScreen = ({ onBack, liffHook, showNotification }) => {
-            const { liffStatus, userProfile, sendMessage } = liffHook;
+            const { liffStatus, userProfile, sendMessage, login } = liffHook;
             const { items: cartItems, addToCart, updateQuantity, clearCart, subtotal } = useCart();
             
             const [customerName, setCustomerName] = useState('');
@@ -804,7 +834,7 @@
                     <LoadingOverlay isLoading={isLoading} />
                     <Header onBack={onBack}/>
                     <main className="screen-main">
-                        <LiffStatusDisplay status={liffStatus} profile={userProfile} />
+                        <LiffStatusDisplay status={liffStatus} profile={userProfile} onLogin={login} />
                         <OrderForm {...{ customerName, setCustomerName, customerPhone, setCustomerPhone, pickupTime, setPickupTime, deliveryAddress, setDeliveryAddress, notes, setNotes, phoneError, timeError }}/>
                         <Menu menuItems={MENU_ITEMS} onAddToCart={handleAddToCart} />
                         <Cart items={cartItems} onUpdateQuantity={updateQuantity} />
