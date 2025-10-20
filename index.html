@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -7,8 +6,8 @@
     <title>台灣小吃店 - LINE訂餐系統</title>
     
     <!-- Dependencies -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
@@ -51,7 +50,7 @@
 
         /* Header */
         .header {
-            background-color: #16a34a; /* bg-green-600 */
+            background-color: #16a34a;
             color: white;
             padding: 20px;
             text-align: center;
@@ -326,13 +325,11 @@
         const { useState, useEffect, useCallback, useMemo, StrictMode } = React;
         const { createRoot } = ReactDOM;
 
-        // --- From constants.tsx ---
         const LIFF_ID = '2008316489-6nMjb0KX';
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbxec_ZhXtYbPLG2Xc7Qv1-E1fIAwQPfBvSZ6KaD44kQsEzc7DcQFBvhUBxwSJXNf1_Q/exec';
         const DELIVERY_FEE = 30;
         
-        // Fallback menu in case fetching from Google Sheets fails
-        const FALLBACK_MENU_ITEMS = [
+        const MENU_ITEMS = [
             { id: '1', name: '滷肉飯', price: 35, icon: '🍚' },
             { id: '2', name: '雞肉飯', price: 40, icon: '🍗' },
             { id: '3', name: '蚵仔煎', price: 65, icon: '🍳' },
@@ -349,29 +346,26 @@
             TRASH: <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
         };
         
-        // --- From hooks/useLiff.ts ---
         const useLiff = () => {
             const [liffStatus, setLiffStatus] = useState('initializing');
             const [userProfile, setUserProfile] = useState(null);
 
             const initializeLiff = useCallback(async () => {
                 try {
-                    const liff = window.liff;
-                    if (!liff) {
-                        throw new Error("LIFF SDK not found.");
+                    if (!window.liff) {
+                        throw new Error("LIFF SDK not loaded.");
                     }
-                    await liff.init({ liffId: LIFF_ID });
-
-                    if (liff.isLoggedIn()) {
-                        const profile = await liff.getProfile();
+                    await window.liff.init({ liffId: LIFF_ID });
+                    if (window.liff.isLoggedIn()) {
+                        const profile = await window.liff.getProfile();
                         setUserProfile(profile);
                         setLiffStatus('ready');
                     } else {
                         setLiffStatus('logged_out');
-                        liff.login();
+                        window.liff.login();
                     }
                 } catch (error) {
-                    console.error('LIFF initialization failed', error);
+                    console.error('LIFF initialization failed:', error);
                     setLiffStatus('error');
                 }
             }, []);
@@ -383,7 +377,6 @@
             return { liffStatus, userProfile };
         };
 
-        // --- From hooks/useCart.ts ---
         const useCart = () => {
             const [items, setItems] = useState([]);
 
@@ -424,7 +417,6 @@
             return { items, addToCart, updateQuantity, clearCart, subtotal };
         };
 
-        // --- From components/Header.tsx ---
         const Header = ({ onBack }) => {
             return (
                 <header className="header">
@@ -442,7 +434,6 @@
             );
         };
 
-        // --- From components/LiffStatus.tsx ---
         const LiffStatusDisplay = ({ status, profile }) => {
             const getStatusProps = () => {
                 switch (status) {
@@ -457,7 +448,6 @@
             return <div className={`liff-status ${type}`}>{text}</div>;
         };
 
-        // --- From components/OrderForm.tsx ---
         const FormGroup = ({ label, required, children, error }) => (
             <div className="form-group">
                 <label>
@@ -471,7 +461,7 @@
 
         const OrderForm = ({ customerName, setCustomerName, customerPhone, setCustomerPhone, pickupTime, setPickupTime, deliveryAddress, setDeliveryAddress, notes, setNotes, phoneError, timeError }) => {
             return (
-                <React.Fragment>
+                <>
                     <FormGroup label="姓名" required>
                         <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="自動帶入 LINE 名稱" />
                     </FormGroup>
@@ -488,16 +478,16 @@
                     <FormGroup label="備註 (選填)">
                         <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="例如：不要香菜、加辣、餐具數量等"></textarea>
                     </FormGroup>
-                </React.Fragment>
+                </>
             );
         };
-        
-        // --- From components/Menu.tsx ---
+
         const SectionTitle = ({ children }) => (
             <h2 className="section-title">
                 {children}
             </h2>
         );
+
         const Menu = ({ menuItems, onAddToCart }) => {
             const quickAddItems = menuItems.filter(item => ['滷肉飯', '雞肉飯', '珍珠奶茶', '鹽酥雞'].includes(item.name));
             return (
@@ -523,7 +513,6 @@
             );
         };
 
-        // --- From components/Cart.tsx ---
         const Cart = ({ items, onUpdateQuantity }) => {
             return (
                 <div className="cart-container">
@@ -552,7 +541,6 @@
             );
         };
 
-        // --- From components/OrderSummary.tsx ---
         const OrderSummary = ({ subtotal, deliveryFee }) => {
             const total = subtotal + deliveryFee;
             return (
@@ -569,19 +557,17 @@
                 </div>
             );
         };
-        
-        // --- From components/Footer.tsx ---
+
         const Footer = () => {
             return (
                 <footer className="footer">
                     <p>📍 營業時間: 10:00-21:00</p>
                     <p>📞 聯絡電話: 02-1234-5678</p>
-                    <p style={{marginTop: '0.5rem', opacity: 0.7}}>系統版本: 5.1.0 (Pre-configured)</p>
+                    <p style={{marginTop: '0.5rem', opacity: 0.7}}>系統版本: 5.2.1</p>
                 </footer>
             );
         };
 
-        // --- From components/Notification.tsx ---
         const Notification = ({ notification, onClose }) => {
             useEffect(() => {
                 if (notification) {
@@ -599,8 +585,7 @@
                 </div>
             );
         };
-        
-        // --- From components/LoadingOverlay.tsx ---
+
         const LoadingOverlay = ({ isLoading, text = "處理中..." }) => {
             if (!isLoading) return null;
             return (
@@ -610,8 +595,7 @@
                 </div>
             );
         };
-        
-        // --- From components/RichMenuDashboard.tsx ---
+
         const RICH_MENU_ICONS = {
             ONLINE_ORDER: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4.63,16.27V14.14H19.37v2.13c0,1.4-1.12,2.53-2.5,2.53H7.13C5.75,18.8,4.63,17.67,4.63,16.27M19.37,12.7H4.63a3.5,3.5,0,0,1-3.5-3.5,1,1,0,0,1,1-1H21.87a1,1,0,0,1,1,1,3.5,3.5,0,0,1-3.5,3.5Z"/><path d="M7.89,6.5A2.74,2.74,0,0,1,5.63,4.6,2.68,2.68,0,0,1,7.2,2.13a.75.75,0,1,1,.7,1.3,1.21,1.21,0,0,0-.49.88,1.22,1.22,0,0,0,1.21,1.22.75.75,0,0,1,0,1.5,2.71,2.71,0,0,1-1.07-.23Z"/><path d="M12.37,6.5a2.74,2.74,0,0,1-2.26-1.9,2.68,2.68,0,0,1,1.57-2.47.75.75,0,1,1,.7,1.3,1.21,1.21,0,0,0-.49.88,1.22,1.22,0,0,0,1.21,1.22.75.75,0,0,1,0,1.5,2.71,2.71,0,0,1-1.07-.23Z"/><path d="M16.84,6.5a2.74,2.74,0,0,1-2.26-1.9,2.68,2.68,0,0,1,1.57-2.47.75.75,0,1,1,.7,1.3,1.21,1.21,0,0,0-.49.88,1.22,1.22,0,0,0,1.21,1.22.75.75,0,0,1,0,1.5,2.71,2.71,0,0,1-1.07-.23Z"/></svg>,
             VIEW_MENU: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14,2H6A2,2,0,0,0,4,4V20a2,2,0,0,0,2,2H18a2,2,0,0,0,2-2V8Zm2,16H8V16h8Zm0-4H8V12h8Zm-2-6V4.5L18.5,9Z"/></svg>,
@@ -620,12 +604,14 @@
             LOCATION: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12,11.5A2.5,2.5,0,0,1,9.5,9A2.5,2.5,0,0,1,12,6.5A2.5,2.5,0,0,1,14.5,9A2.5,2.5,0,0,1,12,11.5M12,2A7,7,0,0,0,5,9c0,5.25,7,13,7,13s7-7.75,7-13A7,7,0,0,0,12,2Z"/></svg>,
             PROMOTIONS: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.3,12.5l-0.8,3.3l-0.8-3.3l-3.3-0.8l3.3-0.8l0.8-3.3l0.8,3.3l3.3,0.8L12.3,12.5z M19.3,9.3l-1.4,0.4l-0.4-1.4l1.4-0.4L19.3,9.3z M19.3,18.7l-1.4-0.4l-0.4,1.4l1.4,0.4L19.3,18.7z M4.7,9.3l1.4,0.4l0.4-1.4L4.7,7.9L4.7,9.3z M12,2L9.5,9.5L2,12l7.5,2.5L12,22l2.5-7.5L22,12L14.5,9.5L12,2z"/></svg>,
         };
+
         const MenuButton = ({ icon, label, onClick, bgColorClass }) => (
             <button onClick={onClick} className={`menu-button ${bgColorClass}`}>
                 {icon}
                 <span>{label}</span>
             </button>
         );
+
         const RichMenuDashboard = ({ onNavigateToOrder, liffHook, showNotification }) => {
             const { liffStatus, userProfile } = liffHook;
 
@@ -654,7 +640,6 @@
             );
         };
 
-        // --- From components/OrderScreen.tsx ---
         const OrderScreen = ({ onBack, liffHook, showNotification, menuItems, gasUrl }) => {
             const { liffStatus, userProfile } = liffHook;
             const { items: cartItems, addToCart, updateQuantity, clearCart, subtotal } = useCart();
@@ -669,7 +654,7 @@
             const [timeError, setTimeError] = useState('');
 
             const deliveryFee = deliveryAddress.trim() ? DELIVERY_FEE : 0;
-            const isOrderSubmittable = cartItems.length > 0;
+            const isOrderSubmittable = cartItems.length > 0 && customerName.trim() && customerPhone.trim() && pickupTime;
 
             const setDefaultPickupTime = useCallback(() => {
                 const now = new Date();
@@ -692,18 +677,42 @@
 
             const validateForm = () => {
                 let isValid = true;
-                if (!/^09\d{8}$/.test(customerPhone)) { setPhoneError('請輸入正確的手機號碼 (09開頭，10位數字)'); isValid = false; } else { setPhoneError(''); }
-                if (!pickupTime) { setTimeError('請選擇取餐時間'); isValid = false; }
-                else if (new Date(pickupTime) < new Date()) { setTimeError('取餐時間不能是過去的時間'); isValid = false; }
-                else { setTimeError(''); }
-                if (cartItems.length === 0) { showNotification({ type: 'error', message: '請選擇至少一樣餐點' }); isValid = false; }
-                if (!customerName.trim()) { showNotification({ type: 'error', message: '請輸入您的姓名' }); isValid = false; }
+                if (!/^09\d{8}$/.test(customerPhone)) {
+                    setPhoneError('請輸入正確的手機號碼 (09開頭，10位數字)');
+                    isValid = false;
+                } else {
+                    setPhoneError('');
+                }
+                if (!pickupTime) {
+                    setTimeError('請選擇取餐時間');
+                    isValid = false;
+                } else if (new Date(pickupTime) < new Date()) {
+                    setTimeError('取餐時間不能是過去的時間');
+                    isValid = false;
+                } else {
+                    setTimeError('');
+                }
+                if (cartItems.length === 0) {
+                    showNotification({ type: 'error', message: '請選擇至少一樣餐點' });
+                    isValid = false;
+                }
+                if (!customerName.trim()) {
+                    showNotification({ type: 'error', message: '請輸入您的姓名' });
+                    isValid = false;
+                }
                 return isValid;
             };
-            
+
             const resetForm = useCallback(() => {
-                clearCart(); setCustomerPhone(''); setDeliveryAddress(''); setNotes(''); setPhoneError(''); setTimeError('');
-                if (userProfile?.displayName) { setCustomerName(userProfile.displayName); }
+                clearCart();
+                setCustomerPhone('');
+                setDeliveryAddress('');
+                setNotes('');
+                setPhoneError('');
+                setTimeError('');
+                if (userProfile?.displayName) {
+                    setCustomerName(userProfile.displayName);
+                }
                 setDefaultPickupTime();
             }, [clearCart, setDefaultPickupTime, userProfile]);
 
@@ -711,7 +720,7 @@
                 if (!validateForm()) return;
                 setIsLoading(true);
                 
-                const itemsForBackend = cartItems.map(({ id, name, price, quantity }) => ({ id, name, price, quantity }));
+                const itemsForBackend = cartItems.map(({ id, name, price, quantity, icon }) => ({ id, name, price, quantity, icon }));
 
                 const orderData = {
                     customerName: customerName.trim(),
@@ -726,35 +735,31 @@
                     notes: notes.trim() || '無',
                     paymentMethod: '現場付款'
                 };
-                
+
                 try {
                     const response = await fetch(gasUrl, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Use text/plain to avoid CORS preflight
-                        body: JSON.stringify({ action: 'submitOrder', orderData: orderData }),
-                        redirect: 'follow'
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'submitOrder', orderData }),
+                        mode: 'cors',
+                        credentials: 'omit'
                     });
-                    
-                    if (!response.ok) {
-                        let errorMsg = `伺服器錯誤: ${response.status}`;
-                        try {
-                            const errData = await response.json();
-                            errorMsg = errData.error || errorMsg;
-                        } catch (e) { /* response might not be json */ }
-                        throw new Error(errorMsg);
-                    }
 
                     const result = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(result.error || `伺服器錯誤: ${response.status}`);
+                    }
 
                     if (result.success) {
                         showNotification({ type: 'success', message: `${result.message}！訂單編號: ${result.orderId}。確認訊息將透過 LINE 發送。` });
                         resetForm();
                         onBack();
                     } else {
-                        throw new Error(result.error || '後端回報訂單提交失敗');
+                        throw new Error(result.error || '訂單提交失敗');
                     }
                 } catch (error) {
-                    showNotification({ type: 'error', message: `訂單發送失敗：${error instanceof Error ? error.message : String(error)}` });
+                    showNotification({ type: 'error', message: `訂單發送失敗：${error.message || String(error)}` });
                 } finally {
                     setIsLoading(false);
                 }
@@ -776,61 +781,32 @@
                 </div>
             );
         };
-        
-        // --- From App.tsx ---
+
         const App = () => {
             const [view, setView] = useState('menu');
             const [notification, setNotification] = useState(null);
-            const [menuItems, setMenuItems] = useState([]);
-            const [menuStatus, setMenuStatus] = useState('loading'); // 'loading', 'loaded', 'error'
+            const [menuItems, setMenuItems] = useState(MENU_ITEMS);
             const liffHook = useLiff();
             
             const showNotification = useCallback((notification) => {
                 setNotification(notification);
             }, []);
-            
+
             useEffect(() => {
                 const fetchMenu = async () => {
                     try {
-                        const response = await fetch(GAS_URL, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            body: JSON.stringify({ action: 'getMenu' }),
-                            redirect: 'follow',
-                        });
-
-                        if (!response.ok) throw new Error(`伺服器回應錯誤，狀態碼: ${response.status}`);
-                        const data = await response.json();
-                        if (!Array.isArray(data)) throw new Error("從伺服器收到的菜單格式不正確。");
-
-                        const menuWithIcons = data
-                            .filter(item => item.available)
-                            .map(item => {
-                                const localItem = FALLBACK_MENU_ITEMS.find(mi => mi.id === String(item.id));
-                                return { ...item, icon: localItem ? localItem.icon : '🍲' };
-                            });
-
-                        setMenuItems(menuWithIcons);
-                        setMenuStatus('loaded');
+                        const response = await fetch(`${GAS_URL}?path=menu`, { method: 'GET' });
+                        const result = await response.json();
+                        if (result.success) {
+                            setMenuItems(result.data);
+                        }
                     } catch (error) {
                         console.error('Failed to fetch menu:', error);
-                        showNotification({ type: 'error', message: `無法載入菜單，請檢查網路連線或後端設定。將使用備用菜單。` });
-                        setMenuItems(FALLBACK_MENU_ITEMS);
-                        setMenuStatus('error');
                     }
                 };
-
                 fetchMenu();
-            }, [showNotification]);
+            }, []);
 
-            if (menuStatus === 'loading') {
-                return (
-                    <div className="app-container">
-                        <LoadingOverlay isLoading={true} text="菜單載入中..." />
-                    </div>
-                );
-            }
-    
             return (
                 <div className="app-container">
                     <Notification notification={notification} onClose={() => setNotification(null)} />
@@ -842,8 +818,7 @@
                 </div>
             );
         };
-        
-        // --- From index.tsx ---
+
         const rootElement = document.getElementById('root');
         const root = createRoot(rootElement);
         root.render(
