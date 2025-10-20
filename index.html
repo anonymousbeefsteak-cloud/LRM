@@ -8,7 +8,7 @@
     <!-- Dependencies -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@google/generative-ai/dist/index.js"></script>
+    <!-- Note: The @google/generative-ai script is no longer needed on the client -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
@@ -180,23 +180,25 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 1.5rem;
+            padding: 1rem; /* Adjusted padding for 2x3 grid */
             border-radius: 0.75rem;
             color: white;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             transform: translateY(0);
             transition: transform 0.2s, box-shadow 0.2s;
+            aspect-ratio: 1 / 0.8;
         }
         .menu-button:hover {
             transform: translateY(-4px);
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
-        .menu-button svg { width: 2.5rem; height: 2.5rem; }
-        .menu-button span { margin-top: 0.75rem; font-weight: 600; font-size: 1.125rem; }
+        .menu-button svg { width: 2.25rem; height: 2.25rem; } /* Adjusted icon size */
+        .menu-button span { margin-top: 0.75rem; font-weight: 600; font-size: 1rem; } /* Adjusted font size */
         .bg-green-600 { background-color: #16a34a; } .bg-green-600:hover { background-color: #15803d; }
         .bg-blue-500 { background-color: #3b82f6; } .bg-blue-500:hover { background-color: #2563eb; }
         .bg-teal-500 { background-color: #14b8a6; } .bg-teal-500:hover { background-color: #0d9488; }
         .bg-orange-500 { background-color: #f97316; } .bg-orange-500:hover { background-color: #ea580c; }
+        .bg-purple-500 { background-color: #8b5cf6; } .bg-purple-500:hover { background-color: #7c3aed; }
         
         /* Menu Section */
         .menu-container {
@@ -303,6 +305,43 @@
         .notification-toast.warning { background-color: #f59e0b; }
         .notification-toast p:first-child { font-weight: bold; }
         .notification-toast p:last-child { font-size: 0.875rem; white-space: pre-wrap; }
+        
+        /* Backend Code Screen Styles */
+        .code-block {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            overflow-x: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.875rem;
+        }
+        .code-block-title {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #475569;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+        }
+        .instructions {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #1e293b;
+        }
+        .instructions ol {
+            padding-left: 1.5rem;
+            color: #334155;
+        }
+        .instructions li {
+            margin-bottom: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -310,15 +349,8 @@
 
     <script type="text/babel">
     (function() {
-        // Mock 'process' for browser environment as per Gemini API guidelines
-        window.process = {
-            env: {
-                // IMPORTANT: This API_KEY is a placeholder. The execution environment
-                // is expected to replace this value. For local testing without a backend,
-                // you can paste your key here, but DO NOT commit it to version control.
-                API_KEY: '' 
-            }
-        };
+        // Mock 'process' for browser environment. This is no longer used for API keys.
+        window.process = { env: {} };
 
         const { useState, useEffect, useCallback, useMemo } = React;
         const { createRoot } = ReactDOM;
@@ -343,38 +375,48 @@
         };
         
         // --- From services/geminiService.ts ---
+        const BACKEND_URL = 'http://localhost:3001';
+
         const generateOrderConfirmation = async (orderData) => {
-            if (!process.env.API_KEY) {
-                console.warn("API_KEY environment variable not set. Returning a mock response.");
-                return `✅ 訂單成功！\n訂單編號: MOCK-123\n總金額: $${orderData.totalAmount}\n(注意: 這是一條模擬確認訊息，因為未設定API金鑰)`;
-            }
             try {
-                // The Gemini library is loaded via script tag and available on `window.google.generativeai`
-                const { GoogleGenAI } = window.google.generativeai;
-                const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-                const prompt = `
-                  You are an AI assistant for '🍜 台灣小吃店' (Taiwanese Snack Shop).
-                  A customer has just submitted an order through our LINE ordering system.
-                  Please generate a friendly and slightly humorous order confirmation message in Traditional Chinese (繁體中文).
-                  The message should:
-                  1. Confirm the order was received.
-                  2. Include a unique, fun order number (e.g., "珍奶-123" or "雞排-007").
-                  3. Briefly summarize the key details of the order.
-                  4. End with a warm closing.
-
-                  Here is the order data in JSON format:
-                  ${JSON.stringify(orderData, null, 2)}
-
-                  Generate only the confirmation message text. Keep it concise.
-                `;
-                const response = await ai.models.generateContent({
-                  model: 'gemini-2.5-flash',
-                  contents: prompt,
+                const response = await fetch(`${BACKEND_URL}/api/generate-confirmation`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderData)
                 });
-                return response.text;
+                
+                if (!response.ok) {
+                    // Try to get more info from the backend's response body
+                    const errorData = await response.json();
+                    throw new Error(errorData.confirmationMessage || 'Backend request failed');
+                }
+
+                const data = await response.json();
+                return data.confirmationMessage;
             } catch (error) {
-                console.error("Gemini API call failed:", error);
+                console.error("Backend API call failed:", error);
+                // Return a fallback message that indicates the error but still provides key info
                 return `✅ 訂單已收到，但AI確認訊息產生失敗。\n訂單編號: ERR-456\n總金額: $${orderData.totalAmount}\n我們將手動為您處理。`;
+            }
+        };
+
+        const submitOrder = async (orderData) => {
+             try {
+                const response = await fetch(`${BACKEND_URL}/api/submit-order`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderData),
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to submit order to the backend.');
+                }
+
+                console.log("Order successfully submitted to the backend.");
+                return true;
+            } catch (error) {
+                console.error('Error submitting order:', error);
+                return false;
             }
         };
         
@@ -506,7 +548,7 @@
         };
 
         // --- From components/Header.tsx ---
-        const Header = ({ onBack }) => {
+        const Header = ({ onBack, title = "🍜 台灣小吃店", subtitle = "LINE 快速訂餐" }) => {
             return (
                 <header className="header">
                     {onBack && (
@@ -516,8 +558,8 @@
                             </svg>
                         </button>
                     )}
-                    <h1>🍜 台灣小吃店</h1>
-                    <p>LINE 快速訂餐</p>
+                    <h1>{title}</h1>
+                    <p>{subtitle}</p>
                     <div className="header-decorator"></div>
                 </header>
             );
@@ -662,7 +704,7 @@
                 <footer className="footer">
                     <p>📍 營業時間: 10:00-21:00</p>
                     <p>📞 聯絡電話: 02-1234-5678</p>
-                    <p style={{marginTop: '0.5rem', opacity: 0.7}}>系統版本: 3.2.0 (Single File)</p>
+                    <p style={{marginTop: '0.5rem', opacity: 0.7}}>系統版本: 4.1.0 (Client-Server-Integrated)</p>
                 </footer>
             );
         };
@@ -716,6 +758,7 @@
             INFO: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
             SHARE: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12s-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" /></svg>,
             FAQ: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+            BACKEND: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 17.25v-.228a4.5 4.5 0 00-.12-1.03l-2.268-9.64a3.375 3.375 0 00-3.285-2.816H7.885a3.375 3.375 0 00-3.285 2.816l-2.268 9.64a4.5 4.5 0 00-.12 1.03v.228m19.5 0a3 3 0 01-3 3H5.25a3 3 0 01-3-3m19.5 0a3 3 0 00-3-3H5.25a3 3 0 00-3 3m16.5 0h.008v.008h-.008v-.008zm-3 0h.008v.008h-.008v-.008z" /></svg>,
         };
         const MenuButton = ({ icon, label, onClick, bgColorClass }) => (
             <button onClick={onClick} className={`menu-button ${bgColorClass}`}>
@@ -723,7 +766,7 @@
                 <span>{label}</span>
             </button>
         );
-        const RichMenuDashboard = ({ onNavigateToOrder, liffHook, showNotification }) => {
+        const RichMenuDashboard = ({ onNavigateToOrder, onNavigateToBackend, liffHook, showNotification }) => {
             const { liffStatus, userProfile, shareMessage, liffError } = liffHook;
             const handleShare = async () => {
                 const result = await shareMessage();
@@ -744,6 +787,7 @@
                             <MenuButton icon={RICH_MENU_ICONS.INFO} label="營業資訊" onClick={handleShowInfo} bgColorClass="bg-blue-500" />
                             <MenuButton icon={RICH_MENU_ICONS.SHARE} label="分享好友" onClick={handleShare} bgColorClass="bg-teal-500" />
                             <MenuButton icon={RICH_MENU_ICONS.FAQ} label="常見問題" onClick={handleShowFaq} bgColorClass="bg-orange-500" />
+                            <MenuButton icon={RICH_MENU_ICONS.BACKEND} label="後端程式碼" onClick={onNavigateToBackend} bgColorClass="bg-purple-500" />
                         </div>
                     </main>
                     <Footer />
@@ -821,8 +865,14 @@
                 };
                 
                 try {
+                    // First, submit the order to the backend to be saved
+                    await submitOrder(orderData);
+                    
+                    // Then, get the confirmation message from the backend
                     const confirmationMessage = await generateOrderConfirmation(orderData);
+                    
                     showNotification({ type: 'success', message: confirmationMessage });
+                    
                     if (liffStatus === 'ready') {
                         const liffMessage = `感謝您的訂購！\n訂單摘要：\n${cartItems.map(item => `${item.name} x${item.quantity}`).join('\n')}\n總金額: $${orderData.totalAmount}\n取餐時間: ${orderData.pickupTime}\n\n${confirmationMessage.split('\n')[0]}`;
                         await sendMessage(liffMessage);
@@ -853,6 +903,133 @@
             );
         };
         
+        // --- NEW COMPONENT: BackendCodeScreen ---
+        const BackendCodeScreen = ({ onBack }) => {
+            const packageJsonCode = `{
+  "name": "taiwan-snack-shop-backend",
+  "version": "1.0.0",
+  "description": "Backend for the Taiwanese Snack Shop LINE Ordering App",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.15.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}`;
+            const serverJsCode = `// Import necessary packages
+const express = require('express');
+const cors = require('cors');
+require('dotenv').config(); // Load environment variables from .env file
+const { GoogleGenAI } = require('@google/generative-ai');
+
+// --- Initialization ---
+const app = express();
+const port = process.env.PORT || 3001;
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const orders = []; // In-memory "database"
+
+// --- Middleware ---
+app.use(cors());
+app.use(express.json());
+
+// --- API Endpoints ---
+app.get('/', (req, res) => {
+  res.send('Taiwanese Snack Shop Backend is running! 🍜');
+});
+
+app.post('/api/generate-confirmation', async (req, res) => {
+  const orderData = req.body;
+  if (!process.env.API_KEY) {
+    return res.json({ 
+      confirmationMessage: \`✅ 訂單成功！\\n訂單編號: MOCK-123\\n總金額: \${orderData.totalAmount}\\n(注意: 這是一條模擬確認訊息，因為未設定API金鑰)\` 
+    });
+  }
+  try {
+    const prompt = \`
+      You are an AI assistant for '🍜 台灣小吃店'.
+      A customer has just submitted an order.
+      Please generate a friendly and humorous order confirmation message in Traditional Chinese.
+      The message should include a unique, fun order number.
+      Here is the order data:
+      \${JSON.stringify(orderData, null, 2)}
+      Generate only the confirmation message text. Keep it concise.
+    \`;
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash', contents: prompt,
+    });
+    res.json({ confirmationMessage: response.text });
+  } catch (error) {
+    console.error("Error calling Gemini API:", error);
+    res.status(500).json({ 
+      error: "AI confirmation message generation failed.",
+      confirmationMessage: \`✅ 訂單已收到，但AI確認訊息產生失敗。\\n訂單編號: ERR-456\\n總金額: \${orderData.totalAmount}\\n我們將手動為您處理。\`
+    });
+  }
+});
+
+app.post('/api/submit-order', (req, res) => {
+  const orderData = req.body;
+  const newOrder = {
+    orderId: \`order_\${Date.now()}\`, ...orderData,
+    receivedAt: new Date().toISOString()
+  };
+  orders.push(newOrder);
+  console.log('✅ New Order Received:');
+  console.log(JSON.stringify(newOrder, null, 2));
+  console.log(\`--- Total orders in memory: \${orders.length} ---\`);
+  res.status(201).json({ message: 'Order received!', order: newOrder });
+});
+
+// --- Start Server ---
+app.listen(port, () => {
+  console.log(\`🚀 Server listening at http://localhost:\${port}\`);
+});`;
+
+            const dotenvCode = `# .env file
+# This file should be in the root of your backend folder.
+# DO NOT commit this file to version control (e.g., git).
+
+# Your Google AI Studio API Key
+API_KEY="YOUR_GEMINI_API_KEY_HERE"
+
+# (Optional) You can change the port the server runs on
+# PORT=3001`;
+
+            return (
+                <div className="screen">
+                    <Header onBack={onBack} title="後端程式碼" subtitle="Node.js + Express"/>
+                    <main className="screen-main">
+                        <div className="instructions">
+                            <h3>🚀 後端設定指南</h3>
+                            <ol>
+                                <li>建立一個新資料夾 (例如: <code>snack-shop-backend</code>)。</li>
+                                <li>在資料夾中建立下面三個檔案，並複製貼上對應的程式碼。</li>
+                                <li>在 <code>.env</code> 檔案中填入您的 Gemini API 金鑰。</li>
+                                <li>打開終端機，進入該資料夾，然後執行 <code>npm install</code> 安裝套件。</li>
+                                <li>執行 <code>npm start</code> 來啟動後端伺服器。</li>
+                            </ol>
+                        </div>
+                        
+                        <div style={{marginTop: '1.5rem'}}>
+                            <h3 className="code-block-title">1. package.json</h3>
+                            <pre className="code-block"><code>{packageJsonCode}</code></pre>
+
+                            <h3 className="code-block-title">2. server.js</h3>
+                            <pre className="code-block"><code>{serverJsCode}</code></pre>
+
+                            <h3 className="code-block-title">3. .env</h3>
+                            <pre className="code-block"><code>{dotenvCode}</code></pre>
+                        </div>
+                    </main>
+                    <Footer />
+                </div>
+            );
+        };
+
         // --- From App.tsx ---
         const App = () => {
             const [view, setView] = useState('menu');
@@ -871,14 +1048,27 @@
                 );
             }
 
+            const renderView = () => {
+                switch (view) {
+                    case 'order':
+                        return <OrderScreen onBack={() => setView('menu')} liffHook={liffHook} showNotification={showNotification} />;
+                    case 'backend':
+                        return <BackendCodeScreen onBack={() => setView('menu')} />;
+                    case 'menu':
+                    default:
+                        return <RichMenuDashboard 
+                                    onNavigateToOrder={() => setView('order')}
+                                    onNavigateToBackend={() => setView('backend')}
+                                    liffHook={liffHook} 
+                                    showNotification={showNotification}
+                                />;
+                }
+            };
+            
             return (
                 <div className="app-container">
                     <Notification notification={notification} onClose={() => setNotification(null)} />
-                    {view === 'menu' ? (
-                        <RichMenuDashboard onNavigateToOrder={() => setView('order')} liffHook={liffHook} showNotification={showNotification}/>
-                    ) : (
-                        <OrderScreen onBack={() => setView('menu')} liffHook={liffHook} showNotification={showNotification} />
-                    )}
+                    {renderView()}
                 </div>
             );
         };
