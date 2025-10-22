@@ -6,47 +6,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <title>台灣小吃店 - LINE 快速訂餐</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use locally built Tailwind CSS -->
+    <link rel="stylesheet" href="/css/styles.css">
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <style>
-        body {
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            -khtml-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-        
-        input, textarea, select {
-            -webkit-user-select: text;
-            -moz-user-select: text;
-            -ms-user-select: text;
-            user-select: text;
-        }
-
-        .no-context-menu {
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            -khtml-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-        }
-
-        @keyframes slide-in {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        .animate-slide-in { animation: slide-in 0.3s ease-out forwards; }
-        
-        @keyframes fade-in {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in { animation: fade-in 0.5s ease-out; }
-    </style>
 </head>
 <body class="bg-gradient-to-br from-indigo-300 to-purple-400 no-context-menu" oncontextmenu="return false;">
     <div class="p-4 min-h-screen flex items-center justify-center">
@@ -79,11 +41,11 @@
                     <div class="space-y-4 mt-4">
                         <div>
                             <label class="block mb-2 font-bold text-gray-700 text-sm">姓名 <span class="text-red-500">*</span></label>
-                            <input type="text" id="customerName" placeholder="自動帶入 LINE 名稱" class="w-full p-3 border border-gray-300 rounded-lg text-sm transition-all duration-200 focus:ring-green-500 focus:border-green-500">
+                            <input type="text" id="customerName" placeholder="自動帶入 LINE 名稱" maxlength="50" class="w-full p-3 border border-gray-300 rounded-lg text-sm transition-all duration-200 focus:ring-green-500 focus:border-green-500">
                         </div>
                         <div>
                             <label class="block mb-2 font-bold text-gray-700 text-sm">手機號碼 <span class="text-red-500">*</span></label>
-                            <input type="tel" id="customerPhone" placeholder="0912345678" class="w-full p-3 border border-gray-300 rounded-lg text-sm transition-all duration-200 focus:ring-green-500 focus:border-green-500">
+                            <input type="tel" id="customerPhone" placeholder="0912345678" maxlength="10" class="w-full p-3 border border-gray-300 rounded-lg text-sm transition-all duration-200 focus:ring-green-500 focus:border-green-500">
                             <p id="phoneError" class="text-red-500 text-xs mt-1"></p>
                         </div>
                         <div>
@@ -93,12 +55,12 @@
                         </div>
                         <div>
                             <label class="block mb-2 font-bold text-gray-700 text-sm">外送地點 (選填)</label>
-                            <input type="text" id="deliveryAddress" placeholder="如需外送請填寫地址" class="w-full p-3 border border-gray-300 rounded-lg text-sm transition-all duration-200 focus:ring-green-500 focus:border-green-500">
+                            <input type="text" id="deliveryAddress" placeholder="如需外送請填寫地址" maxlength="100" class="w-full p-3 border border-gray-300 rounded-lg text-sm transition-all duration-200 focus:ring-green-500 focus:border-green-500">
                             <p class="text-xs text-gray-500 mt-1 italic">※ 填寫地址將由後端計算 $30 外送費</p>
                         </div>
                         <div>
                             <label class="block mb-2 font-bold text-gray-700 text-sm">備註 (選填)</label>
-                            <textarea id="notes" rows="2" placeholder="例如：不要香菜、加辣等" class="w-full p-3 border border-gray-300 rounded-lg text-sm transition-all duration-200 focus:ring-green-500 focus:border-green-500"></textarea>
+                            <textarea id="notes" rows="2" placeholder="例如：不要香菜、加辣等" maxlength="200" class="w-full p-3 border border-gray-300 rounded-lg text-sm transition-all duration-200 focus:ring-green-500 focus:border-green-500"></textarea>
                         </div>
                     </div>
 
@@ -184,8 +146,10 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // --- CONFIGURATION ---
-            const LIFF_ID = '2008316489-6nMjb0KX';
-            const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyoMYnFUZcIIqvdULsy1J0DIMeakYFwhHaeAn99m6bPqxnlk87obPqIVhm3J73daQw/exec';
+            const LIFF_ID = '2008316489-6nMjb0KX'; // Ensure this LIFF ID is registered with https://anonymousbeefsteak-cloud.github.io/LRM/ in LINE Developers Console
+            const API_ENDPOINT = '/api/order'; // Proxy endpoint
+            const API_KEY = 'YOUR_SECURE_API_KEY'; // Replace with secure key from environment or backend
+            const MAX_ITEMS_PER_ORDER = 10;
             
             const MENU_ITEMS = [
                 { name: '滷肉飯', price: 35, icon: '🍚' },
@@ -289,6 +253,13 @@
                 if (itemIndex === -1) return;
 
                 const newQuantity = cart[itemIndex].quantity + change;
+                const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0) + change;
+
+                if (totalItems > MAX_ITEMS_PER_ORDER) {
+                    showNotification(`單筆訂單最多 ${MAX_ITEMS_PER_ORDER} 個品項`, 'error');
+                    return;
+                }
+
                 if (newQuantity <= 0) {
                     cart.splice(itemIndex, 1);
                     showNotification(`已移除 ${itemName}`, 'warning');
@@ -299,6 +270,12 @@
             };
 
             window.handleAddToCart = (itemName) => {
+                const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0) + 1;
+                if (totalItems > MAX_ITEMS_PER_ORDER) {
+                    showNotification(`單筆訂單最多 ${MAX_ITEMS_PER_ORDER} 個品項`, 'error');
+                    return;
+                }
+
                 const existingItem = cart.find(item => item.name === itemName);
                 if (existingItem) {
                     existingItem.quantity++;
@@ -315,7 +292,6 @@
                 return date.toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
             };
 
-            // 修正：格式化訂單項目顯示
             const formatOrderItems = (items) => {
                 return items.map(item => `${item.icon} ${item.name} x${item.quantity} ($${item.price * item.quantity})`).join(', ');
             };
@@ -330,7 +306,6 @@
                 elements.successCustomerName.textContent = orderData.customerName;
                 elements.successTotalAmount.textContent = orderData.totalAmount;
                 elements.successPickupTime.textContent = formatDisplayTime(orderData.pickupTime);
-                // 修正：顯示格式化的訂單項目
                 elements.successOrderItems.textContent = formatOrderItems(orderData.items);
                 
                 const shareTextContent = generateShareText(orderId, orderData);
@@ -354,6 +329,12 @@
                     isValid = false;
                 }
 
+                if (!elements.customerName.value.trim()) {
+                    showNotification('請輸入姓名', 'error');
+                    elements.customerName.classList.add('border-red-500');
+                    isValid = false;
+                }
+
                 if (!elements.pickupTime.value) {
                     elements.timeError.textContent = '請選擇取餐時間';
                     elements.pickupTime.classList.add('border-red-500');
@@ -364,6 +345,7 @@
                     showNotification('購物車是空的，請添加餐點', 'error');
                     isValid = false;
                 }
+
                 return isValid;
             };
 
@@ -405,12 +387,18 @@
                 try {
                     const response = await fetch(API_ENDPOINT, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                        body: JSON.stringify(payload),
-                        mode: 'cors'
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-API-Key': API_KEY,
+                            'X-CSRF-Token': generateCsrfToken()
+                        },
+                        body: JSON.stringify(payload)
                     });
 
-                    if (!response.ok) throw new Error(`伺服器錯誤: ${response.status} ${response.statusText}`);
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`伺服器錯誤: ${response.status} ${errorText}`);
+                    }
                     
                     const result = await response.json();
                     if (result.success) {
@@ -432,12 +420,16 @@
                     }
                 } catch (error) {
                     console.error('Order submission error:', error);
-                    showNotification(`訂單失敗: ${error instanceof Error ? error.message : '未知錯誤'}`, 'error');
+                    showNotification(`訂單失敗: ${error.message || '未知錯誤'}`, 'error');
                 } finally {
                     setLoading(false);
                 }
             };
-            
+
+            const generateCsrfToken = () => {
+                return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            };
+
             const setDefaultPickupTime = () => {
                 const now = new Date();
                 now.setMinutes(now.getMinutes() + 30);
@@ -452,6 +444,7 @@
 
             const resetForm = () => {
                 cart = [];
+                elements.customerName.value = lineUserId ? elements.customerName.value : '';
                 elements.customerPhone.value = '';
                 elements.deliveryAddress.value = '';
                 elements.notes.value = '';
@@ -489,9 +482,10 @@
                         elements.liffStatus.textContent = `👋 歡迎，${profile.displayName}！`;
                         elements.liffStatus.className = `p-3 rounded-lg text-sm text-center border ${statusClasses.success}`;
                         
-                        // 測試 API 連線
                         try {
-                            const testResponse = await fetch(API_ENDPOINT + '?action=test');
+                            const testResponse = await fetch(API_ENDPOINT + '?action=test', {
+                                headers: { 'X-API-Key': API_KEY }
+                            });
                             const testResult = await testResponse.json();
                             if (testResult.success) {
                                 showNotification('✅ 系統連線正常', 'success', 2000);
@@ -516,7 +510,6 @@
             };
             
             const populateMenu = () => {
-                // 清空現有選項
                 elements.menuSelect.innerHTML = '<option value="">-- 請選擇餐點 --</option>';
                 
                 MENU_ITEMS.forEach(item => {
@@ -553,7 +546,6 @@
             elements.submitBtn.addEventListener('click', handleSubmit);
             elements.notificationClose.addEventListener('click', () => elements.notification.classList.add('hidden'));
             
-            // 點擊空白處關閉通知
             document.addEventListener('click', (e) => {
                 if (!elements.notification.contains(e.target)) {
                     elements.notification.classList.add('hidden');
