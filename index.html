@@ -176,7 +176,7 @@
             <footer class="bg-gray-100 p-4 text-center text-xs text-gray-500 border-t border-gray-200">
                 <p>📍 營業時間: 10:00 - 21:00</p>
                 <p>📞 聯絡電話: 02-1234-5678</p>
-                <p class="mt-2 opacity-70">系統版本: 9.0.0-Secure</p>
+                <p class="mt-2 opacity-70">系統版本: 8.0.0-24H</p>
             </footer>
         </div>
     </div>
@@ -185,8 +185,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             // --- CONFIGURATION ---
             const LIFF_ID = '2008316489-6nMjb0KX';
-            // 使用代理伺服器端點，隱藏真實的 Google Apps Script URL
-            const API_ENDPOINT = '/api/order'; // 代理伺服器端點
+            const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyoMYnFUZcIIqvdULsy1J0DIMeakYFwhHaeAn99m6bPqxnlk87obPqIVhm3J73daQw/exec';
             
             const MENU_ITEMS = [
                 { name: '滷肉飯', price: 35, icon: '🍚' },
@@ -204,7 +203,6 @@
             let cart = [];
             let lineUserId = '';
             let isLoading = false;
-            let apiToken = '';
 
             // --- DOM ELEMENTS ---
             const getEl = (id) => document.getElementById(id);
@@ -238,13 +236,6 @@
                 successOrderItems: getEl('successOrderItems'),
                 lineShareBtn: getEl('lineShareBtn'),
                 shareText: getEl('shareText')
-            };
-
-            // 生成安全 Token
-            const generateSecurityToken = () => {
-                const timestamp = Date.now();
-                const random = Math.random().toString(36).substring(2);
-                return btoa(`${timestamp}:${random}:${lineUserId || 'anonymous'}`).replace(/=/g, '');
             };
 
             const showNotification = (message, type = 'success', duration = 4000) => {
@@ -324,7 +315,7 @@
                 return date.toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
             };
 
-            // 格式化訂單項目顯示
+            // 修正：格式化訂單項目顯示
             const formatOrderItems = (items) => {
                 return items.map(item => `${item.icon} ${item.name} x${item.quantity} ($${item.price * item.quantity})`).join(', ');
             };
@@ -339,6 +330,7 @@
                 elements.successCustomerName.textContent = orderData.customerName;
                 elements.successTotalAmount.textContent = orderData.totalAmount;
                 elements.successPickupTime.textContent = formatDisplayTime(orderData.pickupTime);
+                // 修正：顯示格式化的訂單項目
                 elements.successOrderItems.textContent = formatOrderItems(orderData.items);
                 
                 const shareTextContent = generateShareText(orderId, orderData);
@@ -386,9 +378,6 @@
                 if (!validateForm()) return;
                 setLoading(true);
 
-                // 生成安全 Token
-                apiToken = generateSecurityToken();
-
                 const orderDataForDisplay = {
                     customerName: elements.customerName.value.trim(),
                     customerPhone: elements.customerPhone.value.trim(),
@@ -397,8 +386,7 @@
                     pickupTime: elements.pickupTime.value,
                     deliveryAddress: elements.deliveryAddress.value.trim(),
                     notes: elements.notes.value.trim(),
-                    timestamp: new Date().toISOString(),
-                    securityToken: apiToken
+                    timestamp: new Date().toISOString()
                 };
                 
                 const orderDataForServer = {
@@ -409,8 +397,7 @@
                     pickupTime: orderDataForDisplay.pickupTime,
                     deliveryAddress: orderDataForDisplay.deliveryAddress,
                     notes: orderDataForDisplay.notes,
-                    timestamp: orderDataForDisplay.timestamp,
-                    securityToken: orderDataForDisplay.securityToken
+                    timestamp: orderDataForDisplay.timestamp
                 };
 
                 const payload = { action: 'createOrder', orderData: orderDataForServer };
@@ -418,23 +405,12 @@
                 try {
                     const response = await fetch(API_ENDPOINT, {
                         method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'X-API-Key': apiToken,
-                            'X-Request-ID': generateSecurityToken(),
-                            'X-Timestamp': Date.now().toString()
-                        },
-                        body: JSON.stringify(payload)
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify(payload),
+                        mode: 'cors'
                     });
 
-                    if (!response.ok) {
-                        if (response.status === 401) {
-                            throw new Error('授權失敗，請重新整理頁面');
-                        } else if (response.status === 429) {
-                            throw new Error('請求過於頻繁，請稍後再試');
-                        }
-                        throw new Error(`伺服器錯誤: ${response.status} ${response.statusText}`);
-                    }
+                    if (!response.ok) throw new Error(`伺服器錯誤: ${response.status} ${response.statusText}`);
                     
                     const result = await response.json();
                     if (result.success) {
@@ -515,12 +491,9 @@
                         
                         // 測試 API 連線
                         try {
-                            const testResponse = await fetch('/api/test', {
-                                headers: {
-                                    'X-API-Key': generateSecurityToken()
-                                }
-                            });
-                            if (testResponse.ok) {
+                            const testResponse = await fetch(API_ENDPOINT + '?action=test');
+                            const testResult = await testResponse.json();
+                            if (testResult.success) {
                                 showNotification('✅ 系統連線正常', 'success', 2000);
                             }
                         } catch (apiError) {
