@@ -6,358 +6,522 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <title>台灣小吃店 - LINE 快速訂餐</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-color: #f7fafc; /* Tailwind gray-100 */
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
-            overflow-x: hidden;
         }
         input, textarea, select {
             -webkit-user-select: text;
             user-select: text;
         }
+        @keyframes slide-in {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .animate-slide-in { animation: slide-in 0.3s ease-out forwards; }
         @keyframes fade-in {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-in { animation: fade-in 0.5s ease-out; }
-        .card-shadow {
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-        }
-        .btn-hover {
-            transition: all 0.3s ease;
-        }
-        .btn-hover:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 7px 14px rgba(0, 0, 0, 0.1);
-        }
-        .watermark {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            color: rgba(255,255,255,0.3);
-            font-size: 0.7rem;
-            pointer-events: none;
-        }
-        #desktopWarning {
-            display: none;
-        }
     </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/"
+  }
+}
+</script>
 </head>
-<body oncontextmenu="return false;" oncopy="return false" oncut="return false" onpaste="return false">
-    <div class="watermark">台灣小吃店訂餐系統 v8.0</div>
-    
-    <div id="desktopWarning" class="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-        <div class="text-center bg-white p-6 rounded-lg card-shadow">
-            <h2 class="text-xl font-bold text-red-600 mb-4">⚠️ 僅限手機使用</h2>
-            <p class="text-gray-600">本系統僅支援手機設備，請使用手機 LINE App 開啟。</p>
-        </div>
-    </div>
+<body oncontextmenu="return false;">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useCallback, useEffect, useMemo } = React;
 
-    <div id="appContainer" class="p-4 min-h-screen flex items-center justify-center hidden">
-        <div class="container max-w-md mx-auto bg-white rounded-2xl card-shadow overflow-hidden">
-            <div class="bg-gradient-to-r from-green-500 to-blue-500 rounded-t-2xl p-2 text-xs text-center text-white">
-                <span>🔒 安全訂餐系統 - 僅限手機</span>
-            </div>
+        // --- From constants.ts ---
+        const LIFF_ID = '2008316489-6nMjb0KX';
+        const OBFUSCATED_API_ENDPOINT = 'aHR0cHM6Ly9zY3JpcHQuZ29vZ2xlLmNvbS9tYWNyb3Mvcy9BS2Z5Y2J6ZF9jVnRlWFoxQ2xpdGV6bXhPRDRkSzNCWHBjOTl1ZXJGc29aWThyb0FRZE9NY1c2YktlT1hOMEgyZWswODc2eFEvZXhlYw==';
+        const API_ENDPOINT = atob(OBFUSCATED_API_ENDPOINT);
+        const OBFUSCATED_API_KEY = 'Z2VuLWxhbmctY2xpZW50LTA4MDAzMzE4Mzk=';
+        const API_KEY = atob(OBFUSCATED_API_KEY);
+        const DELIVERY_FEE = 30;
 
-            <header class="bg-gradient-to-r from-green-500 to-green-600 text-white p-5 text-center">
-                <h1 class="text-2xl font-bold mb-1">🍜 台灣小吃店</h1>
-                <p class="text-sm opacity-90">LINE 快速訂餐</p>
-            </header>
+        // MENU_ITEMS is now fetched dynamically
 
-            <main class="p-5 space-y-4">
-                <div id="notification" class="hidden fixed top-5 right-5 max-w-sm p-4 rounded-lg shadow-lg z-50">
-                    <div class="flex justify-between items-center">
-                        <p id="notificationMessage" class="text-sm font-medium"></p>
-                        <button id="notificationClose" class="ml-4 text-xl font-bold">&times;</button>
-                    </div>
-                </div>
-
-                <div id="orderPage" class="animate-fade-in">
-                    <div id="liffStatus" class="p-3 rounded-lg text-sm text-center border bg-blue-100 border-blue-400 text-blue-800">
-                        🔄 初始化安全連線中...
-                    </div>
-                    
-                    <div class="space-y-4 mt-4">
-                        <div>
-                            <label class="block mb-2 font-bold text-gray-700 text-sm">姓名 <span class="text-red-500">*</span></label>
-                            <input type="text" id="customerName" placeholder="自動帶入 LINE 名稱" class="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-green-500 focus:border-green-500" autocomplete="name">
-                        </div>
-                        <div>
-                            <label class="block mb-2 font-bold text-gray-700 text-sm">手機號碼 <span class="text-red-500">*</span></label>
-                            <input type="tel" id="customerPhone" placeholder="0912345678" class="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-green-500 focus:border-green-500" autocomplete="tel" maxlength="10">
-                            <p id="phoneError" class="text-red-500 text-xs mt-1"></p>
-                        </div>
-                        <div>
-                            <label class="block mb-2 font-bold text-gray-700 text-sm">取餐時間 <span class="text-red-500">*</span></label>
-                            <input type="datetime-local" id="pickupTime" class="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-green-500 focus:border-green-500">
-                            <p id="timeError" class="text-red-500 text-xs mt-1"></p>
-                        </div>
-                        <div>
-                            <label class="block mb-2 font-bold text-gray-700 text-sm">外送地點 (選填)</label>
-                            <input type="text" id="deliveryAddress" placeholder="如需外送請填寫地址" class="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-green-500 focus:border-green-500" autocomplete="street-address">
-                            <p class="text-xs text-gray-500 mt-1 italic">※ 填寫地址將加收 $30 外送費</p>
-                        </div>
-                        <div>
-                            <label class="block mb-2 font-bold text-gray-700 text-sm">備註 (選填)</label>
-                            <textarea id="notes" rows="2" placeholder="例如：不要香菜、加辣等" class="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-green-500 focus:border-green-500"></textarea>
-                        </div>
-                    </div>
-
-                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mt-4">
-                        <h2 class="text-center text-lg font-bold text-gray-800 mb-4">📝 選擇餐點</h2>
-                        <select id="menuSelect" class="w-full p-3 border border-gray-300 rounded-lg text-sm mb-4 focus:ring-green-500 focus:border-green-500">
-                            <option value="">-- 請選擇餐點 --</option>
-                        </select>
-                        <div class="p-3 bg-white rounded-md">
-                            <p class="text-xs text-gray-500 mb-2">快速選擇：</p>
-                            <div id="quickAddButtons" class="grid grid-cols-2 gap-2"></div>
-                        </div>
-                    </div>
-
-                    <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mt-4">
-                        <h2 class="text-center text-lg font-bold text-gray-800 mb-4">🛒 訂單明細</h2>
-                        <div id="cartItems">
-                            <p class="text-center text-gray-500 py-4 italic">購物車是空的</p>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-green-50 p-4 rounded-lg border border-green-200 space-y-2 mt-4">
-                        <div class="flex justify-between text-sm text-gray-600"><span>餐點總計:</span><span id="subtotal">$0</span></div>
-                        <div class="flex justify-between text-sm text-gray-600"><span>外送費:</span><span id="deliveryFee">$0</span></div>
-                        <div class="flex justify-between font-bold text-lg text-gray-800 border-t border-gray-300 pt-3 mt-3"><span>預估總金額:</span><span id="totalAmount">$0</span></div>
-                    </div>
-                    
-                    <div class="mt-6">
-                        <button id="submitBtn" disabled class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 px-4 rounded-lg text-lg btn-hover disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed flex items-center justify-center">
-                            <span id="submitBtnText">🔐 安全送出訂單</span>
-                            <div id="loadingSpinner" class="hidden flex items-center">
-                                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <span>加密傳送中...</span>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-
-                <div id="successPage" class="hidden text-center p-5 animate-fade-in">
-                    <div class="text-6xl mb-5">✅</div>
-                    <h3 class="text-2xl font-bold text-green-600 mb-4">訂單提交成功！</h3>
-                    <div class="bg-gray-50 p-4 rounded-lg my-5 text-left border">
-                        <p><strong>訂單編號：</strong><span id="successOrderId">-</span></p>
-                        <p><strong>顧客姓名：</strong><span id="successCustomerName">-</span></p>
-                        <p><strong>最終總金額：</strong>$<span id="successTotalAmount">0</span></p>
-                        <p><strong>取餐時間：</strong><span id="successPickupTime">-</span></p>
-                        <p><strong>訂單內容：</strong><span id="successOrderItems">-</span></p>
-                    </div>
-                    <div class="mt-6">
-                        <button onclick="newOrder()" class="bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-8 rounded-md text-base btn-hover">📝 再訂一單</button>
-                    </div>
-                </div>
-            </main>
-
-            <footer class="bg-gray-100 p-4 text-center text-xs text-gray-500 border-t border-gray-200">
-                <p>📍 營業時間: 10:00 - 21:00</p>
-                <p>📞 聯絡電話: 02-1234-5678</p>
-                <p class="mt-2 opacity-70">系統版本: 8.0.0-24H | 僅限手機</p>
-            </footer>
-        </div>
-    </div>
-
-    <script>
-        // 設備檢測
-        function isMobileDevice() {
-            const userAgent = navigator.userAgent.toLowerCase();
-            const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-            const isMobileUA = /mobile|android|iphone|ipad|phone|tablet/.test(userAgent);
-            const isSmallScreen = window.innerWidth <= 768;
-            return isTouchDevice && isMobileUA && isSmallScreen;
-        }
-
-        // 初始化設備檢查
-        document.addEventListener('DOMContentLoaded', function() {
-            const desktopWarning = document.getElementById('desktopWarning');
-            const appContainer = document.getElementById('appContainer');
-
-            if (!isMobileDevice()) {
-                desktopWarning.classList.remove('hidden');
-                appContainer.classList.add('hidden');
-                return;
-            } else {
-                desktopWarning.classList.add('hidden');
-                appContainer.classList.remove('hidden');
+        // --- From services/apiService.ts ---
+        const getMenu = async () => {
+            const payload = { 
+                action: 'getMenu', 
+                apiKey: API_KEY,
+            };
+            const response = await fetch(API_ENDPOINT, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'text/plain;charset=utf-8',
+                },
+                body: JSON.stringify(payload),
+                mode: 'cors',
+            });
+            if (!response.ok) throw new Error(`無法載入菜單: ${response.status} ${response.statusText}`);
+            const result = await response.json();
+            if (!result.success || !Array.isArray(result.data)) {
+                throw new Error(result.message || '菜單格式錯誤，請聯繫店家');
             }
-
-            // 應用配置
-            const LIFF_ID = '2008344744-3ZzvyRDN';
-            const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbx57ECSCdI2-kAMpWVT__P2DaoG39TXdF5AGmO3q_lnGnf8sRHqeTE_uE5P4tmm5rcS/exec';
-            const MENU_ITEMS = [
-                { name: '滷肉飯', price: 35, icon: '🍚' },
-                { name: '雞肉飯', price: 40, icon: '🍗' },
-                { name: '蚵仔煎', price: 65, icon: '🍳' },
-                { name: '大腸麵線', price: 50, icon: '🍜' },
-                { name: '珍珠奶茶', price: 45, icon: '🥤' },
-                { name: '鹽酥雞', price: 60, icon: '🍖' },
-                { name: '甜不辣', price: 40, icon: '🍢' },
-                { name: '肉圓', price: 45, icon: '🥟' }
-            ];
-            const DELIVERY_FEE = 30;
-
-            // 應用狀態
-            let cart = [];
-            let lineUserId = '';
-            let isLoading = false;
-
-            // DOM 元素
-            const getEl = id => document.getElementById(id);
-            const elements = {
-                orderPage: getEl('orderPage'),
-                successPage: getEl('successPage'),
-                liffStatus: getEl('liffStatus'),
-                customerName: getEl('customerName'),
-                customerPhone: getEl('customerPhone'),
-                phoneError: getEl('phoneError'),
-                pickupTime: getEl('pickupTime'),
-                timeError: getEl('timeError'),
-                deliveryAddress: getEl('deliveryAddress'),
-                notes: getEl('notes'),
-                menuSelect: getEl('menuSelect'),
-                quickAddButtons: getEl('quickAddButtons'),
-                cartItems: getEl('cartItems'),
-                subtotal: getEl('subtotal'),
-                deliveryFee: getEl('deliveryFee'),
-                totalAmount: getEl('totalAmount'),
-                submitBtn: getEl('submitBtn'),
-                submitBtnText: getEl('submitBtnText'),
-                loadingSpinner: getEl('loadingSpinner'),
-                notification: getEl('notification'),
-                notificationMessage: getEl('notificationMessage'),
-                notificationClose: getEl('notificationClose'),
-                successOrderId: getEl('successOrderId'),
-                successCustomerName: getEl('successCustomerName'),
-                successTotalAmount: getEl('successTotalAmount'),
-                successPickupTime: getEl('successPickupTime'),
-                successOrderItems: getEl('successOrderItems')
+            return result.data;
+        };
+        
+        const submitOrder = async (orderData, idToken) => {
+            const orderDataForServer = {
+                customerName: orderData.customerName.trim(),
+                customerPhone: orderData.customerPhone.trim(),
+                items: orderData.items.map(item => ({ name: item.name, quantity: item.quantity })),
+                pickupTime: orderData.pickupTime,
+                deliveryAddress: orderData.deliveryAddress.trim(),
+                notes: orderData.notes.trim(),
+                timestamp: new Date().toISOString(),
             };
 
-            // 通知顯示
-            const showNotification = (message, type, duration = 4000) => {
-                const typeClasses = {
-                    success: 'bg-green-500 text-white',
-                    error: 'bg-red-500 text-white',
-                    warning: 'bg-yellow-500 text-white'
+            const payload = { 
+                action: 'createOrder', 
+                apiKey: API_KEY,
+                idToken: idToken,
+                orderData: orderDataForServer 
+            };
+
+            const response = await fetch(API_ENDPOINT, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'text/plain;charset=utf-8',
+                },
+                body: JSON.stringify(payload),
+                mode: 'cors',
+            });
+
+            if (!response.ok) throw new Error(`伺服器錯誤: ${response.status} ${response.statusText}`);
+            return await response.json();
+        };
+
+        const getOrders = async (params) => {
+            const payload = { 
+                action: 'getOrders', 
+                apiKey: API_KEY,
+                ...params 
+            };
+            const response = await fetch(API_ENDPOINT, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'text/plain;charset=utf-8',
+                },
+                body: JSON.stringify(payload),
+                mode: 'cors',
+            });
+            if (!response.ok) throw new Error(`伺服器錯誤: ${response.status} ${response.statusText}`);
+            return await response.json();
+        };
+
+        // --- From hooks/useLiff.ts ---
+        const useLiff = () => {
+            const [profile, setProfile] = useState(null);
+            const [idToken, setIdToken] = useState(null);
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [liffStatus, setLiffStatus] = useState('🔄 初始化 LINE 功能中...');
+            const [statusType, setStatusType] = useState('info');
+            const [isInClient, setIsInClient] = useState(false);
+
+            const login = useCallback(() => {
+                if (window.liff && !window.liff.isLoggedIn()) {
+                    window.liff.login();
+                }
+            }, []);
+
+            useEffect(() => {
+                const initializeLiff = async () => {
+                    try {
+                        if (window.liff) {
+                            await window.liff.init({ liffId: LIFF_ID });
+                            setIsInClient(window.liff.isInClient());
+                            if (window.liff.isLoggedIn()) {
+                                setIsLoggedIn(true);
+                                const [userProfile, token] = await Promise.all([
+                                    window.liff.getProfile(),
+                                    window.liff.getIDToken()
+                                ]);
+                                setProfile(userProfile);
+                                setIdToken(token);
+                                setLiffStatus(`👋 歡迎，${userProfile.displayName}！`);
+                                setStatusType('success');
+                            } else {
+                                if (window.liff.isInClient()) {
+                                    setLiffStatus('未登入 LINE，正在嘗試登入...');
+                                    window.liff.login();
+                                } else {
+                                    setLiffStatus('請登入 LINE 以獲得完整功能。');
+                                    setStatusType('warning');
+                                }
+                            }
+                        } else {
+                            throw new Error('LIFF SDK not found');
+                        }
+                    } catch (error) {
+                        console.error('LIFF initialization failed', error);
+                        setLiffStatus('⚠️ LINE 功能載入失敗，但您仍可訂餐。');
+                        setStatusType('warning');
+                    }
                 };
-                elements.notification.className = `fixed top-5 right-5 max-w-sm p-4 rounded-lg shadow-lg z-50 ${typeClasses[type]}`;
-                elements.notificationMessage.textContent = message;
-                elements.notification.classList.remove('hidden');
-                setTimeout(() => elements.notification.classList.add('hidden'), duration);
+                initializeLiff();
+            }, []);
+
+            return { profile, idToken, isLoggedIn, liffStatus, statusType, login, isInClient };
+        };
+
+        // --- From components/LoadingSpinner.tsx ---
+        const LoadingSpinner = () => (
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        );
+
+        // --- From components/Notification.tsx ---
+        const Notification = ({ message, type, visible, onClose }) => {
+            if (!visible) return null;
+            const typeClasses = {
+                success: "bg-green-500 text-white",
+                error: "bg-red-500 text-white",
+                warning: "bg-yellow-500 text-white",
+                info: "bg-blue-500 text-white"
+            };
+            return (
+                <div className={`fixed top-5 right-5 max-w-sm p-4 rounded-lg shadow-lg z-50 transition-opacity duration-300 animate-slide-in ${typeClasses[type]}`}>
+                    <div className="flex justify-between items-center">
+                        <p className="text-sm font-medium whitespace-pre-wrap">{message}</p>
+                        <button onClick={onClose} className="ml-4 text-xl font-bold leading-none">&times;</button>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- From components/HistoryPage.tsx ---
+        const HistoryPage = ({ onBack, showNotification }) => {
+            const { idToken, liffStatus, login, isInClient } = useLiff();
+            const [startDate, setStartDate] = useState(() => {
+                const d = new Date();
+                d.setDate(d.getDate() - 7);
+                return d.toISOString().split('T')[0];
+            });
+            const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+            const [orders, setOrders] = useState([]);
+            const [isLoading, setIsLoading] = useState(false);
+            const [searched, setSearched] = useState(false);
+
+            const isLineUser = useMemo(() => !!idToken, [idToken]);
+            const isLiffInitializing = useMemo(() => liffStatus.includes('初始化'), [liffStatus]);
+
+            const handleSearch = async () => {
+                if (!idToken) {
+                    showNotification('僅限 LINE 用戶查詢。', 'error');
+                    return;
+                }
+                
+                setIsLoading(true);
+                setSearched(true);
+                setOrders([]);
+                
+                try {
+                    const params = {
+                        idToken: idToken,
+                        startDate: startDate,
+                        endDate: endDate
+                    };
+
+                    const result = await getOrders(params);
+
+                    if (result.success && Array.isArray(result.data)) {
+                        setOrders(result.data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+                    } else {
+                        throw new Error(result.message || '查詢失敗');
+                    }
+                } catch (error) {
+                    console.error('Search error:', error);
+                    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+                        showNotification('查詢失敗，請檢查您的網路連線。', 'error');
+                    } else if (error instanceof Error) {
+                        showNotification(`查詢失敗：${error.message}`, 'error');
+                    } else {
+                        showNotification('查詢時發生未知錯誤，請稍後再試。', 'error');
+                    }
+                    setOrders([]);
+                } finally {
+                    setIsLoading(false);
+                }
             };
 
-            // 更新訂單總結
-            const updateOrderSummary = () => {
-                const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-                const deliveryFee = elements.deliveryAddress.value.trim() ? DELIVERY_FEE : 0;
-                const total = subtotal + deliveryFee;
-                elements.subtotal.textContent = `$${subtotal}`;
-                elements.deliveryFee.textContent = `$${deliveryFee}`;
-                elements.totalAmount.textContent = `$${total}`;
-                elements.submitBtn.disabled = cart.length === 0 || isLoading;
+            const formatItems = (items) => {
+                return typeof items === 'string' ? items : '項目資訊錯誤';
             };
 
-            // 渲染購物車
-            const renderCart = () => {
-                if (cart.length === 0) {
-                    elements.cartItems.innerHTML = '<p class="text-center text-gray-500 py-4 italic">購物車是空的</p>';
-                } else {
-                    elements.cartItems.innerHTML = cart.map(item => `
-                        <div class="flex justify-between items-center py-3 border-b border-gray-200 last:border-b-0">
-                            <div>
-                                <p class="font-bold text-gray-800">${item.icon} ${item.name}</p>
-                                <p class="text-xs text-gray-500">$${item.price} x ${item.quantity} = $${item.price * item.quantity}</p>
+            const renderContent = () => {
+                if (isLiffInitializing) {
+                    return (
+                        <div className="text-center py-10 flex flex-col items-center justify-center text-gray-600">
+                            <LoadingSpinner />
+                            <p className="mt-3 text-sm">{liffStatus}</p>
+                        </div>
+                    );
+                }
+
+                if (!isLineUser) {
+                    return (
+                        <div className="text-center text-gray-600 py-10 px-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                            <div className="text-4xl mb-4">🔐</div>
+                            <h3 className="text-lg font-bold text-gray-800 mb-2">會員功能：訂單紀錄</h3>
+                            <p className="text-sm">為了保護您的隱私，查詢歷史訂單功能僅限會員使用。</p>
+                            
+                            {!isInClient && (
+                                <div className="mt-6">
+                                    <p className="text-sm mb-4">請登入您的 LINE 帳號以繼續。</p>
+                                    <button onClick={login} className="w-full bg-[#00c300] hover:bg-[#00a300] text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center transition-transform transform hover:scale-105">
+                                        <svg className="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M17.9 11.3C17.4 15 14.3 18 10.4 18c-3.9 0-7.3-3-7.8-6.7H2v-2h.6c.5-3.7 3.9-6.7 7.8-6.7 3.9 0 7.3 3 7.8 6.7H18v2h-.1zM6.3 11.1c0-1 .8-1.8 1.8-1.8.9 0 1.7.8 1.7 1.8s-.8 1.8-1.7 1.8c-1 0-1.8-.8-1.8-1.8zm5.6 0c0-1 .8-1.8 1.7-1.8.9 0 1.7.8 1.7 1.8s-.8 1.8-1.7 1.8c-1 0-1.7-.8-1.7-1.8z"></path></svg>
+                                        <span>使用 LINE 登入</span>
+                                    </button>
+                                </div>
+                            )}
+                            {isInClient && (
+                                <p className="text-sm mt-4">系統正在嘗試自動登入，請稍候...</p>
+                            )}
+                        </div>
+                    );
+                }
+
+                return (
+                    <React.Fragment>
+                        <div className="p-4 bg-gray-50 rounded-lg border">
+                            <p className="text-sm text-gray-700 mb-3 text-center bg-green-100 p-2 rounded-md border border-green-200">
+                                您已透過 LINE 登入，將自動查詢此帳號的訂單。
+                            </p>
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">開始日期</label>
+                                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">結束日期</label>
+                                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md" />
+                                </div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <button onclick="handleQuantityChange('${item.name}', -1)" class="w-7 h-7 bg-green-500 text-white rounded-full font-bold text-sm flex items-center justify-center btn-hover">-</button>
-                                <span class="w-8 text-center font-bold">${item.quantity}</span>
-                                <button onclick="handleQuantityChange('${item.name}', 1)" class="w-7 h-7 bg-green-500 text-white rounded-full font-bold text-sm flex items-center justify-center btn-hover">+</button>
-                                <button onclick="handleQuantityChange('${item.name}', ${-item.quantity})" class="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded btn-hover">移除</button>
+                            <div>
+                                <button onClick={handleSearch} disabled={isLoading} className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-400 flex items-center justify-center">
+                                    {isLoading ? (
+                                        <React.Fragment>
+                                            <LoadingSpinner />
+                                            <span>查詢中...</span>
+                                        </React.Fragment>
+                                    ) : '🔍 查詢'}
+                                </button>
                             </div>
                         </div>
-                    `).join('');
-                }
-                updateOrderSummary();
+
+                        <div className="space-y-4 max-h-[60vh] overflow-y-auto p-1 mt-4">
+                            {!isLoading && !searched && (
+                                <div className="text-center text-gray-500 py-10 italic">
+                                    <p>請選擇日期範圍進行查詢您的歷史訂單。</p>
+                                </div>
+                            )}
+                            {!isLoading && searched && orders.length === 0 && (
+                                <p className="text-center text-gray-500 py-10 italic">找不到符合條件的訂單</p>
+                            )}
+                            {!isLoading && orders.map(order => (
+                                <div key={order.orderId} className="bg-white p-4 rounded-lg shadow border border-gray-200">
+                                    <div className="flex justify-between items-start border-b pb-2 mb-2">
+                                        <div>
+                                            <p className="text-xs text-gray-500">訂單編號</p>
+                                            <p className="font-bold text-gray-800 text-sm">{order.orderId}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xs text-gray-500">訂單金額</p>
+                                            <p className="font-bold text-green-600 text-lg">${order.totalAmount}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-sm space-y-1 text-gray-600">
+                                        <p><strong>下單時間:</strong> {new Date(order.createdAt).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+                                        <p><strong>預計取餐:</strong> {new Date(order.pickupTime).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+                                        <p><strong>訂單內容:</strong> {formatItems(order.items)}</p>
+                                        {order.deliveryAddress && <p><strong>外送地址:</strong> {order.deliveryAddress}</p>}
+                                        {order.notes && <p><strong>備註:</strong> {order.notes}</p>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </React.Fragment>
+                );
             };
 
-            window.handleQuantityChange = (itemName, change) => {
-                const itemIndex = cart.findIndex(item => item.name === itemName);
-                if (itemIndex === -1) return;
-                const newQuantity = cart[itemIndex].quantity + change;
-                if (newQuantity <= 0) {
-                    cart.splice(itemIndex, 1);
-                    showNotification(`已移除 ${itemName}`, 'warning');
-                } else {
-                    cart[itemIndex].quantity = newQuantity;
-                }
-                renderCart();
+            return (
+                <div className="animate-fade-in">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-gray-800">訂單紀錄查詢</h2>
+                        <button onClick={onBack} className="text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 px-3 rounded-lg">返回訂餐</button>
+                    </div>
+                    {renderContent()}
+                </div>
+            );
+        };
+
+        // --- From components/SuccessPage.tsx ---
+        const SuccessPage = ({ orderData, onNewOrder, showNotification }) => {
+            const formatDisplayTime = (timestamp) => new Date(timestamp).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+            const formatOrderItems = (items) => items.map(item => `${item.icon} ${item.name} x${item.quantity} ($${item.price * item.quantity})`).join(', ');
+
+            const shareTextContent = useMemo(() => {
+                const itemsText = orderData.items.map(item => `▫️ ${item.icon} ${item.name} x${item.quantity} - $${item.price * item.quantity}`).join('\n');
+                return `🍽️ 台灣小吃店 - 訂單確認\n\n📋 訂單編號：${orderData.orderId}\n👤 顧客姓名：${orderData.customerName}\n📞 聯絡電話：${orderData.customerPhone}\n\n📦 訂單內容：\n${itemsText}\n\n💰 最終總金額：$${orderData.totalAmount}\n⏰ 取餐時間：${formatDisplayTime(orderData.pickupTime)}\n📍 ${orderData.deliveryAddress ? `外送地址：${orderData.deliveryAddress}` : '自取'}\n📝 備註：${orderData.notes || '無'}\n\n📍 取餐地址：台灣小吃店\n🕒 營業時間：10:00-21:00\n📞 聯絡電話：02-1234-5678`;
+            }, [orderData]);
+
+            const copyShareText = () => {
+                navigator.clipboard.writeText(shareTextContent)
+                    .then(() => showNotification('訂單資訊已複製！', 'success'))
+                    .catch(err => {
+                        console.error('Copy failed', err);
+                        showNotification('複製失敗', 'error');
+                    });
             };
 
-            window.handleAddToCart = itemName => {
-                const existingItem = cart.find(item => item.name === itemName);
-                if (existingItem) {
-                    existingItem.quantity++;
-                } else {
-                    const menuItem = MENU_ITEMS.find(item => item.name === itemName);
-                    if (menuItem) cart.push({ ...menuItem, quantity: 1 });
+            return (
+                <div className="text-center p-5 animate-fade-in">
+                    <div className="text-6xl mb-5">✅</div>
+                    <h3 className="text-2xl font-bold text-green-600 mb-4">訂單提交成功！</h3>
+                    <div className="bg-gray-50 p-4 rounded-lg my-5 text-left border">
+                        <p><strong>訂單編號：</strong><span>{orderData.orderId}</span></p>
+                        <p><strong>顧客姓名：</strong><span>{orderData.customerName}</span></p>
+                        <p><strong>最終總金額：</strong>$<span>{orderData.totalAmount}</span></p>
+                        <p><strong>取餐時間：</strong><span>{formatDisplayTime(orderData.pickupTime)}</span></p>
+                        <p><strong>訂單內容：</strong><span>{formatOrderItems(orderData.items)}</span></p>
+                    </div>
+                    <div className="my-8">
+                        <p className="text-lg font-bold mb-4">📱 分享訂單資訊</p>
+                        <a href={`https://line.me/R/msg/text/?${encodeURIComponent(shareTextContent)}`} target="_blank" rel="noopener noreferrer" className="inline-block my-4 p-2.5 bg-[#06c755] rounded-lg">
+                            <img src="https://scdn.line-apps.com/n/line_add_friends/btn/zh-Hant.png" alt="分享到 LINE" className="h-10" />
+                        </a>
+                        <div className="mt-6">
+                            <p className="text-sm text-gray-600 mb-2">或複製以下訂單資訊：</p>
+                            <textarea readOnly value={shareTextContent} rows={6} className="w-full p-3 border border-gray-300 rounded-lg text-sm bg-gray-100"></textarea>
+                            <button onClick={copyShareText} className="bg-blue-500 text-white border-none py-2 px-5 rounded-md cursor-pointer mt-2.5 hover:bg-blue-600">📋 複製訂單資訊</button>
+                        </div>
+                    </div>
+                    <button onClick={onNewOrder} className="bg-green-600 text-white border-none py-3 px-8 rounded-md cursor-pointer text-base mt-5 hover:bg-green-700">📝 再訂一單</button>
+                </div>
+            );
+        };
+
+        // --- From components/OrderPage.tsx ---
+        const OrderPage = ({ menuItems, onSubmitOrder, showNotification, onViewHistory }) => {
+            const { profile, idToken, liffStatus, statusType } = useLiff();
+            const [cart, setCart] = useState([]);
+            const [isLoading, setIsLoading] = useState(false);
+            const [customerName, setCustomerName] = useState('');
+            const [customerPhone, setCustomerPhone] = useState('');
+            const [pickupTime, setPickupTime] = useState('');
+            const [deliveryAddress, setDeliveryAddress] = useState('');
+            const [notes, setNotes] = useState('');
+            const [phoneError, setPhoneError] = useState('');
+            const [timeError, setTimeError] = useState('');
+            
+            const getDefaultPickupTime = () => {
+                const now = new Date();
+                now.setMinutes(now.getMinutes() + 30);
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                return now.toISOString().slice(0, 16);
+            };
+
+            useEffect(() => {
+                setPickupTime(getDefaultPickupTime());
+            }, []);
+
+            useEffect(() => {
+                if (profile?.displayName) {
+                    setCustomerName(profile.displayName);
                 }
+            }, [profile]);
+
+            const { subtotal, deliveryFee, totalAmount } = useMemo(() => {
+                const sub = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+                const fee = deliveryAddress.trim() ? DELIVERY_FEE : 0;
+                return { subtotal: sub, deliveryFee: fee, totalAmount: sub + fee };
+            }, [cart, deliveryAddress]);
+
+            const handleAddToCart = useCallback((itemName) => {
+                const menuItem = menuItems.find(item => item.name === itemName);
+                if (!menuItem) return;
+
+                if (menuItem.status === '已售完') {
+                    showNotification(`${itemName} 已售完，無法加入`, 'error');
+                    return;
+                }
+
+                setCart(prevCart => {
+                    const existingItem = prevCart.find(item => item.name === itemName);
+                    if (existingItem) {
+                        return prevCart.map(item => item.name === itemName ? { ...item, quantity: item.quantity + 1 } : item);
+                    }
+                    return [...prevCart, { ...menuItem, quantity: 1 }];
+                });
                 showNotification(`已添加 ${itemName}`, 'success');
-                renderCart();
-            };
+            }, [showNotification, menuItems]);
 
-            const formatDisplayTime = timestamp => {
-                const date = new Date(timestamp);
-                return date.toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-            };
-
-            const formatOrderItems = items => {
-                return items.map(item => `${item.icon} ${item.name} x${item.quantity} ($${item.price * item.quantity})`).join(', ');
-            };
-
-            const showSuccessPage = (orderId, orderData) => {
-                elements.successOrderId.textContent = orderId;
-                elements.successCustomerName.textContent = orderData.customerName;
-                elements.successTotalAmount.textContent = orderData.totalAmount;
-                elements.successPickupTime.textContent = formatDisplayTime(orderData.pickupTime);
-                elements.successOrderItems.textContent = formatOrderItems(orderData.items);
-                elements.orderPage.classList.add('hidden');
-                elements.successPage.classList.remove('hidden');
-            };
+            const handleQuantityChange = useCallback((itemName, change) => {
+                setCart(prevCart => {
+                    const itemIndex = prevCart.findIndex(item => item.name === itemName);
+                    if (itemIndex === -1) return prevCart;
+                    
+                    const newQuantity = prevCart[itemIndex].quantity + change;
+                    if (newQuantity <= 0) {
+                        showNotification(`已移除 ${itemName}`, 'warning');
+                        return prevCart.filter(item => item.name !== itemName);
+                    }
+                    return prevCart.map(item =>
+                        item.name === itemName ? { ...item, quantity: newQuantity } : item
+                    );
+                });
+            }, [showNotification]);
+            
+            const handleClearCart = useCallback(() => {
+                if (window.confirm('您確定要清空購物車嗎？')) {
+                    setCart([]);
+                    showNotification('購物車已清空', 'warning');
+                }
+            }, [showNotification]);
 
             const validateForm = () => {
                 let isValid = true;
-                elements.phoneError.textContent = '';
-                elements.timeError.textContent = '';
-                elements.customerPhone.classList.remove('border-red-500');
-                elements.pickupTime.classList.remove('border-red-500');
+                setPhoneError('');
+                setTimeError('');
 
-                if (!/^09\d{8}$/.test(elements.customerPhone.value)) {
-                    elements.phoneError.textContent = '請輸入有效的10位手機號碼 (09開頭)';
-                    elements.customerPhone.classList.add('border-red-500');
+                if (!/^09\d{8}$/.test(customerPhone)) {
+                    setPhoneError('請輸入有效的10位手機號碼 (09開頭)');
                     isValid = false;
                 }
 
-                if (!elements.pickupTime.value) {
-                    elements.timeError.textContent = '請選擇取餐時間';
-                    elements.pickupTime.classList.add('border-red-500');
+                const selectedTime = new Date(pickupTime);
+                const minTime = new Date(new Date().getTime() + 29 * 60000);
+                const maxTime = new Date(new Date().getTime() + 7 * 24 * 60 * 60000);
+
+                if (!pickupTime || selectedTime < minTime || selectedTime > maxTime) {
+                    setTimeError('請選擇有效的取餐時間 (30分鐘後至7天內)');
                     isValid = false;
                 }
-
+                
                 if (cart.length === 0) {
                     showNotification('購物車是空的，請添加餐點', 'error');
                     isValid = false;
@@ -365,134 +529,264 @@
                 return isValid;
             };
 
-            const setLoading = loading => {
-                isLoading = loading;
-                elements.submitBtnText.classList.toggle('hidden', loading);
-                elements.loadingSpinner.classList.toggle('hidden', !loading);
-                elements.submitBtn.disabled = loading || cart.length === 0;
-            };
-
             const handleSubmit = async () => {
                 if (!validateForm()) return;
-                setLoading(true);
-
-                const orderData = {
-                    customerName: elements.customerName.value.trim(),
-                    customerPhone: elements.customerPhone.value.trim(),
-                    customerLineUserId: lineUserId || 'WEB_USER',
-                    items: cart.map(item => ({ name: item.name, quantity: item.quantity })),
-                    pickupTime: elements.pickupTime.value,
-                    deliveryAddress: elements.deliveryAddress.value.trim(),
-                    notes: elements.notes.value.trim(),
-                    timestamp: new Date().toISOString()
-                };
-
+                setIsLoading(true);
                 try {
-                    const response = await fetch(API_ENDPOINT, {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'X-Device-Type': 'mobile'
-                        },
-                        body: JSON.stringify({ action: 'createOrder', orderData })
-                    });
-
-                    if (!response.ok) throw new Error(`伺服器錯誤: ${response.status}`);
-                    const result = await response.json();
-                    if (result.success) {
-                        const orderId = result.data.orderId;
-                        orderData.totalAmount = result.data.totalAmount;
-                        showSuccessPage(orderId, orderData);
-                        if (lineUserId && liff.isInClient()) {
-                            await liff.sendMessages([{
-                                type: 'text',
-                                text: `感謝訂購！\n\n📋 訂單編號：${orderId}\n👤 顧客姓名：${orderData.customerName}\n📦 訂單內容：${formatOrderItems(cart)}\n💰 總金額：$${orderData.totalAmount}\n⏰ 取餐時間：${formatDisplayTime(orderData.pickupTime)}`
-                            }]);
-                        }
-                    } else {
-                        throw new Error(result.message || '訂單提交失敗');
-                    }
+                    await onSubmitOrder({ customerName, customerPhone, items: cart, pickupTime, deliveryAddress, notes }, idToken);
                 } catch (error) {
-                    showNotification(`訂單失敗: ${error.message}`, 'error');
+                    // Parent handles notification
                 } finally {
-                    setLoading(false);
+                    setIsLoading(false);
                 }
             };
+            
+            const statusClasses = { info: 'bg-blue-100 border-blue-400 text-blue-800', success: 'bg-green-100 border-green-400 text-green-800', warning: 'bg-yellow-100 border-yellow-400 text-yellow-800', error: 'bg-red-100 border-red-400 text-red-800' };
 
-            const setDefaultPickupTime = () => {
-                const now = new Date();
-                now.setMinutes(now.getMinutes() + 30);
-                const year = now.getFullYear();
-                const month = String(now.getMonth() + 1).padStart(2, '0');
-                const day = String(now.getDate()).padStart(2, '0');
-                const hours = String(now.getHours()).padStart(2, '0');
-                const minutes = String(now.getMinutes()).padStart(2, '0');
-                elements.pickupTime.value = `${year}-${month}-${day}T${hours}:${minutes}`;
-            };
+            return (
+                <div className="animate-fade-in">
+                    <div className={`p-3 rounded-lg text-sm text-center border ${statusClasses[statusType]}`}>{liffStatus}</div>
+                    <button onClick={onViewHistory} className="w-full text-center p-2.5 border border-blue-500 text-blue-600 rounded-md text-sm hover:bg-blue-500 hover:text-white transition-colors duration-200 mt-4">🕒 查詢歷史訂單</button>
+                    <div className="space-y-4 mt-4">
+                        <div>
+                            <label className="block mb-2 font-bold text-gray-700 text-sm">姓名 <span className="text-red-500">*</span></label>
+                            <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="自動帶入 LINE 名稱" className="w-full p-3 border border-gray-300 rounded-lg text-sm transition-all duration-200 focus:ring-green-500 focus:border-green-500"/>
+                        </div>
+                        <div>
+                            <label className="block mb-2 font-bold text-gray-700 text-sm">手機號碼 <span className="text-red-500">*</span></label>
+                            <input type="tel" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="0912345678" className={`w-full p-3 border rounded-lg text-sm transition-all duration-200 focus:ring-green-500 focus:border-green-500 ${phoneError ? 'border-red-500' : 'border-gray-300'}`}/>
+                            {phoneError && <p className="text-red-500 text-xs mt-1">{phoneError}</p>}
+                        </div>
+                        <div>
+                            <label className="block mb-2 font-bold text-gray-700 text-sm">取餐時間 <span className="text-red-500">*</span></label>
+                            <input type="datetime-local" value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} className={`w-full p-3 border rounded-lg text-sm transition-all duration-200 focus:ring-green-500 focus:border-green-500 ${timeError ? 'border-red-500' : 'border-gray-300'}`}/>
+                            {timeError && <p className="text-red-500 text-xs mt-1">{timeError}</p>}
+                        </div>
+                        <div>
+                            <label className="block mb-2 font-bold text-gray-700 text-sm">外送地點 (選填)</label>
+                            <input type="text" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="如需外送請填寫地址" className="w-full p-3 border border-gray-300 rounded-lg text-sm transition-all duration-200 focus:ring-green-500 focus:border-green-500"/>
+                            <p className="text-xs text-gray-500 mt-1 italic">{`※ 填寫地址將由後端計算 $${DELIVERY_FEE} 外送費`}</p>
+                        </div>
+                        <div>
+                            <label className="block mb-2 font-bold text-gray-700 text-sm">備註 (選填)</label>
+                            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="例如：不要香菜、加辣等" className="w-full p-3 border border-gray-300 rounded-lg text-sm transition-all duration-200 focus:ring-green-500 focus:border-green-500"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mt-4">
+                        <h2 className="text-center text-lg font-bold text-gray-800 mb-4 relative pb-2">📝 選擇餐點<span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-green-500 rounded-full"></span></h2>
+                        <select 
+                            onChange={(e) => { if (e.target.value) handleAddToCart(e.target.value); e.target.value = ''; }} 
+                            className="w-full p-3 border border-gray-300 rounded-lg text-sm mb-4 focus:ring-green-500 focus:border-green-500"
+                        >
+                            <option value="">-- 請選擇餐點 --</option>
+                            {menuItems.map(item => (
+                                <option key={item.name} value={item.name} disabled={item.status === '已售完'}>
+                                    {item.icon} {item.name} - ${item.price} {item.status === '已售完' ? '(本日售完)' : ''}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="p-3 bg-white rounded-md">
+                            <p className="text-xs text-gray-500 mb-2">快速選擇：</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {menuItems.slice(0, 4).map(item => (
+                                    <button 
+                                        key={item.name} 
+                                        onClick={() => handleAddToCart(item.name)}
+                                        disabled={item.status === '已售完'}
+                                        className={`w-full text-left p-2 border rounded-md text-xs transition-colors duration-200 ${
+                                            item.status === '已售完' 
+                                            ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                            : 'border-green-500 text-green-600 hover:bg-green-500 hover:text-white'
+                                        }`}
+                                    >
+                                        {item.icon} {item.name} {item.status === '已售完' ? '(售完)' : ''}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
 
-            window.newOrder = () => {
-                cart = [];
-                elements.customerPhone.value = '';
-                elements.deliveryAddress.value = '';
-                elements.notes.value = '';
-                setDefaultPickupTime();
-                renderCart();
-                elements.successPage.classList.add('hidden');
-                elements.orderPage.classList.remove('hidden');
-            };
+                    <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mt-4">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-lg font-bold text-gray-800">🛒 訂單明細</h2>
+                            {cart.length > 0 && (
+                                <button onClick={handleClearCart} className="text-xs bg-red-100 text-red-600 hover:bg-red-500 hover:text-white font-semibold py-1 px-3 rounded-full transition-colors duration-200 flex items-center gap-1">
+                                    🗑️ <span>清空</span>
+                                </button>
+                            )}
+                        </div>
+                        <div>
+                            {cart.length === 0 ? (<p className="text-center text-gray-500 py-4 italic">購物車是空的</p>) : (cart.map(item => (
+                                <div key={item.name} className="flex justify-between items-center py-3 border-b border-gray-200 last:border-b-0">
+                                    <div>
+                                        <p className="font-bold text-gray-800">{item.icon} {item.name}</p>
+                                        <p className="text-xs text-gray-500">${item.price} x {item.quantity} = ${item.price * item.quantity}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => handleQuantityChange(item.name, -1)} className="w-7 h-7 bg-green-500 text-white rounded-full font-bold text-sm flex items-center justify-center hover:bg-green-600 transition-transform transform hover:scale-110">-</button>
+                                        <span className="w-8 text-center font-bold">{item.quantity}</span>
+                                        <button onClick={() => handleQuantityChange(item.name, 1)} className="w-7 h-7 bg-green-500 text-white rounded-full font-bold text-sm flex items-center justify-center hover:bg-green-600 transition-transform transform hover:scale-110">+</button>
+                                        <button onClick={() => handleQuantityChange(item.name, -item.quantity)} className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600 transition">移除</button>
+                                    </div>
+                                </div>
+                            )))}
+                        </div>
+                    </div>
+                    
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-200 space-y-2 mt-4">
+                        <div className="flex justify-between text-sm text-gray-600"><span>餐點總計:</span><span>${subtotal}</span></div>
+                        <div className="flex justify-between text-sm text-gray-600"><span>外送費:</span><span>${deliveryFee}</span></div>
+                        <div className="flex justify-between font-bold text-lg text-gray-800 border-t border-gray-300 pt-3 mt-3"><span>預估總金額:</span><span>${totalAmount}</span></div>
+                    </div>
+                    
+                    <div className="mt-6">
+                        <button onClick={handleSubmit} disabled={cart.length === 0 || isLoading} className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition-all duration-300 ease-in-out transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center">
+                            {isLoading ? <React.Fragment><LoadingSpinner /><span>處理中...</span></React.Fragment> : <span>✅ 送出訂單</span>}
+                        </button>
+                    </div>
+                </div>
+            );
+        };
 
-            const initializeLiff = async () => {
+        // --- From App.tsx ---
+        const App = () => {
+            const [view, setView] = useState('order'); // 'order', 'success', 'history'
+            const [submittedOrder, setSubmittedOrder] = useState(null);
+            const [notification, setNotification] = useState({ message: '', type: 'success', visible: false });
+            const [menuItems, setMenuItems] = useState([]);
+            const [isMenuLoading, setIsMenuLoading] = useState(true);
+            const [menuError, setMenuError] = useState(null);
+
+            useEffect(() => {
+                console.log("%cSTOP!", "color: red; font-size: 48px; font-weight: bold; -webkit-text-stroke: 1px black;");
+                console.log("%cThis is a browser feature intended for developers. If someone told you to copy-paste something here to enable a feature or 'hack' this system, it is a scam.", "font-size: 18px;");
+                console.log("%cThis ordering system is proprietary. Unauthorized copying, distribution, or use of this code is strictly prohibited.", "font-size: 16px; font-weight: bold; color: #888;");
+            }, []);
+
+            const showNotification = useCallback((message, type = 'success', duration = 4000) => {
+                setNotification({ message, type, visible: true });
+                setTimeout(() => setNotification(prev => ({ ...prev, visible: false })), duration);
+            }, []);
+
+            useEffect(() => {
+                const fetchMenu = async () => {
+                    try {
+                        const items = await getMenu();
+                        setMenuItems(items);
+                        setMenuError(null);
+                    } catch (error) {
+                        console.error("Failed to fetch menu:", error);
+                        setMenuError(error.message);
+                        showNotification(`菜單載入失敗: ${error.message}`, 'error', 10000);
+                    } finally {
+                        setIsMenuLoading(false);
+                    }
+                };
+                fetchMenu();
+            }, [showNotification]);
+
+
+            const handleSubmitOrder = async (orderData, idToken) => {
                 try {
-                    await liff.init({ liffId: LIFF_ID });
-                    if (liff.isLoggedIn()) {
-                        const profile = await liff.getProfile();
-                        lineUserId = profile.userId;
-                        elements.customerName.value = profile.displayName;
-                        elements.liffStatus.textContent = `🔐 安全連線建立，歡迎 ${profile.displayName}！`;
-                        elements.liffStatus.className = 'p-3 rounded-lg text-sm text-center border bg-green-100 border-green-400 text-green-800';
-                    } else {
-                        elements.liffStatus.textContent = '請在 LINE App 中開啟以獲得完整功能';
-                        elements.liffStatus.className = 'p-3 rounded-lg text-sm text-center border bg-yellow-100 border-yellow-400 text-yellow-800';
-                        if (liff.isInClient()) liff.login();
-                    }
+                    const result = await submitOrder(orderData, idToken);
+                    if (result.success) {
+                        const finalOrderData = { ...orderData, orderId: result.data?.orderId || 'N/A', totalAmount: result.data.totalAmount };
+                        setSubmittedOrder(finalOrderData);
+                        setView('success');
+                        if (idToken && window.liff?.isInClient()) {
+                            const itemsText = orderData.items.map(item => `${item.icon} ${item.name} x${item.quantity}`).join('\n');
+                            const formattedTime = new Date(orderData.pickupTime).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                            await window.liff.sendMessages([{ type: 'text', text: `感謝訂購！\n\n📋 訂單編號：${finalOrderData.orderId}\n👤 顧客姓名：${orderData.customerName}\n\n📦 訂單內容：\n${itemsText}\n\n💰 總金額：$${finalOrderData.totalAmount}\n⏰ 取餐時間：${formattedTime}` }]);
+                        }
+                    } else { throw new Error(result.message || '訂單提交失敗'); }
                 } catch (error) {
-                    elements.liffStatus.textContent = '⚠️ LINE 功能載入失敗，但仍可訂餐';
-                    elements.liffStatus.className = 'p-3 rounded-lg text-sm text-center border bg-yellow-100 border-yellow-400 text-yellow-800';
+                    console.error('Order submission error:', error);
+                    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+                        showNotification('訂單提交失敗，請檢查您的網路連線後再試一次。', 'error');
+                    } else if (error instanceof Error) {
+                        showNotification(`訂單提交失敗：${error.message}`, 'error');
+                    } else {
+                        showNotification('訂單提交時發生未知錯誤，請稍後再試。', 'error');
+                    }
+                    throw error;
                 }
             };
 
-            const populateMenu = () => {
-                elements.menuSelect.innerHTML = '<option value="">-- 請選擇餐點 --</option>';
-                MENU_ITEMS.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.name;
-                    option.textContent = `${item.icon} ${item.name} - $${item.price}`;
-                    elements.menuSelect.appendChild(option);
-                });
-                elements.quickAddButtons.innerHTML = MENU_ITEMS.slice(0, 4).map(item => `
-                    <button onclick="handleAddToCart('${item.name}')" class="w-full text-left p-2 border border-green-500 text-green-600 rounded-md text-xs btn-hover">${item.icon} ${item.name}</button>
-                `).join('');
+            const handleNewOrder = () => {
+                setSubmittedOrder(null);
+                setView('order');
             };
 
-            // 應用初始化
-            const initializeApp = () => {
-                initializeLiff();
-                setDefaultPickupTime();
-                populateMenu();
-                renderCart();
-                elements.deliveryAddress.addEventListener('input', updateOrderSummary);
-                elements.menuSelect.addEventListener('change', e => {
-                    if (e.target.value) {
-                        handleAddToCart(e.target.value);
-                        e.target.value = '';
-                    }
-                });
-                elements.submitBtn.addEventListener('click', handleSubmit);
-                elements.notificationClose.addEventListener('click', () => elements.notification.classList.add('hidden'));
-            };
+            const renderContent = () => {
+                if (isMenuLoading) {
+                    return (
+                        <div className="text-center py-20 flex flex-col items-center justify-center text-gray-600">
+                            <LoadingSpinner />
+                            <p className="mt-3 text-sm">正在載入最新菜單...</p>
+                        </div>
+                    );
+                }
 
-            initializeApp();
-        });
+                if (menuError) {
+                    return (
+                        <div className="text-center py-10 text-red-700 bg-red-50 p-4 rounded-lg border border-red-200">
+                            <p className="font-bold text-lg">⚠️ 菜單載入失敗</p>
+                            <p className="text-sm mt-2">{menuError}</p>
+                            <p className="text-xs mt-3 text-gray-500">請稍後重新整理頁面，或直接聯繫店家。</p>
+                        </div>
+                    );
+                }
+
+                switch(view) {
+                    case 'history':
+                        return <HistoryPage onBack={() => setView('order')} showNotification={showNotification} />;
+                    case 'success':
+                        return submittedOrder && <SuccessPage orderData={submittedOrder} onNewOrder={handleNewOrder} showNotification={showNotification} />;
+                    case 'order':
+                    default:
+                        return <OrderPage menuItems={menuItems} onSubmitOrder={handleSubmitOrder} showNotification={showNotification} onViewHistory={() => setView('history')} />;
+                }
+            }
+
+            return (
+                <div className="p-4 min-h-screen flex items-center justify-center">
+                    <div className="container max-w-md mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden">
+                        <div className="bg-[#fff3cd] border border-[#ffeaa7] rounded-t-2xl p-2.5 text-xs text-center text-[#856404]">
+                            <span role="img" aria-label="lock">🔒</span> 安全訂餐系統 - 24小時接受預訂
+                        </div>
+
+                        <header className="bg-green-500 text-white p-5 text-center relative">
+                            <h1 className="text-2xl font-bold mb-1">🍜 台灣小吃店</h1>
+                            <p className="text-sm opacity-90">LINE 快速訂餐 - 24小時服務</p>
+                            <div className="absolute bottom-0 left-1/4 right-1/4 h-1 bg-white bg-opacity-30 rounded-full"></div>
+                        </header>
+
+                        <main className="p-5 space-y-4">
+                            <Notification message={notification.message} type={notification.type} visible={notification.visible} onClose={() => setNotification(prev => ({ ...prev, visible: false }))} />
+                            {renderContent()}
+                        </main>
+                        
+                        <footer className="bg-gray-100 p-4 text-center text-xs text-gray-500 border-t border-gray-200">
+                            <p>📍 營業時間: 10:00 - 21:00 | 📞 聯絡電話: 02-1234-5678</p>
+                            <p className="mt-2 opacity-70">系統版本: 10.0.0-DYNAMIC-MENU</p>
+                            <p className="mt-1 opacity-50">&copy; {new Date().getFullYear()} 台灣小吃店. All Rights Reserved.</p>
+                        </footer>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- From index.tsx ---
+        const rootElement = document.getElementById('root');
+        if (rootElement) {
+            const root = ReactDOM.createRoot(rootElement);
+            root.render(
+                <React.StrictMode>
+                    <App />
+                </React.StrictMode>
+            );
+        }
     </script>
 </body>
 </html>
